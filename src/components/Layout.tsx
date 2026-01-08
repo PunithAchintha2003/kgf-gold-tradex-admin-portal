@@ -24,7 +24,6 @@ import {
   Brightness4,
   Brightness7,
   AccountCircle,
-  Menu as MenuIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/authService';
