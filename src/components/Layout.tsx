@@ -20,6 +20,8 @@ import {
 import {
   Dashboard,
   People,
+  ReceiptLong,
+  PendingActions,
   Logout,
   Brightness4,
   Brightness7,
@@ -59,6 +61,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const menuItems = [
     { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
     { text: 'Users', icon: <People />, path: '/users' },
+    { text: 'Transactions', icon: <ReceiptLong />, path: '/transactions' },
+    { text: 'Withdrawals', icon: <PendingActions />, path: '/withdrawals' },
   ];
 
   return (

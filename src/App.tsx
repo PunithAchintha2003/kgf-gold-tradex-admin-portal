@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import UsersPage from './pages/UsersPage';
+import TransactionsPage from './pages/TransactionsPage';
+import WithdrawalsPage from './pages/WithdrawalsPage';
 import Layout from './components/Layout';
 import { authService } from './services/authService';
 
@@ -42,6 +44,26 @@ const App: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <UsersPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transactions"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TransactionsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/withdrawals"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <WithdrawalsPage />
             </Layout>
           </ProtectedRoute>
         }
