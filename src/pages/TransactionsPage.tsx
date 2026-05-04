@@ -66,7 +66,7 @@ const TransactionsPage: React.FC = () => {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell><TableCell>User</TableCell><TableCell>Type</TableCell><TableCell>Quantity (pawn)</TableCell><TableCell>Price</TableCell><TableCell>Total</TableCell><TableCell>Created</TableCell>
+                  <TableCell>ID</TableCell><TableCell>User</TableCell><TableCell>Type</TableCell><TableCell>Quantity (pawn)</TableCell><TableCell>Price</TableCell><TableCell>Total</TableCell><TableCell>Fee</TableCell><TableCell>Created</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -78,6 +78,7 @@ const TransactionsPage: React.FC = () => {
                     <TableCell>{trade.quantity.toFixed(4)}</TableCell>
                     <TableCell>LKR {Math.round(trade.price).toLocaleString('en-LK')}</TableCell>
                     <TableCell>LKR {Math.round(trade.total_value).toLocaleString('en-LK')}</TableCell>
+                    <TableCell>LKR {Math.round(trade.fee || 0).toLocaleString('en-LK')}</TableCell>
                     <TableCell>{new Date(trade.created_at).toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
