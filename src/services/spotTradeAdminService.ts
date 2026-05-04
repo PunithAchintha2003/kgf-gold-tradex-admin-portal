@@ -54,6 +54,7 @@ export interface SpotTrade {
   quantity: number;
   price: number;
   total_value: number;
+  fee: number;
   status: string;
   created_at: string;
   updated_at: string;
