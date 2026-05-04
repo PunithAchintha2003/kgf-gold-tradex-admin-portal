@@ -33,6 +33,7 @@ export interface WalletTransaction {
   user_id: string;
   transaction_type: 'DEPOSIT' | 'WITHDRAWAL';
   amount: number;
+  fee: number;
   status: 'PENDING' | 'COMPLETED' | 'APPROVED' | 'REJECTED' | 'FAILED';
   payment_method?: string;
   stripe_session_id?: string;

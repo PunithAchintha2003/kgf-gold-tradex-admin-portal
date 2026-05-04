@@ -45,7 +45,7 @@ const WithdrawalsPage: React.FC = () => {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell><TableCell>User</TableCell><TableCell>Amount</TableCell><TableCell>Bank</TableCell><TableCell>Account No</TableCell><TableCell>Account Name</TableCell><TableCell>Status</TableCell><TableCell>Actions</TableCell>
+                  <TableCell>ID</TableCell><TableCell>User</TableCell><TableCell>Amount</TableCell><TableCell>Fee</TableCell><TableCell>Total Deducted</TableCell><TableCell>Bank</TableCell><TableCell>Account No</TableCell><TableCell>Account Name</TableCell><TableCell>Status</TableCell><TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -54,6 +54,8 @@ const WithdrawalsPage: React.FC = () => {
                     <TableCell>{tx.id}</TableCell>
                     <TableCell>{tx.user_id}</TableCell>
                     <TableCell>LKR {Math.round(tx.amount).toLocaleString('en-LK')}</TableCell>
+                    <TableCell>LKR {Math.round(tx.fee || 0).toLocaleString('en-LK')}</TableCell>
+                    <TableCell>LKR {Math.round(tx.amount + (tx.fee || 0)).toLocaleString('en-LK')}</TableCell>
                     <TableCell>{tx.bank_name}</TableCell>
                     <TableCell>{tx.bank_account_number}</TableCell>
                     <TableCell>{tx.bank_account_name}</TableCell>
