@@ -3,8 +3,13 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider as MUIThemeProvider, CssBaseline } from '@mui/material';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import App from './App';
 import { createAppTheme } from './theme/theme';
+import { injectKeyframes } from './theme/animations';
+
+// Inject keyframe animations on app load
+injectKeyframes();
 
 const ThemedApp: React.FC = () => {
   const { mode } = useTheme();
@@ -13,7 +18,9 @@ const ThemedApp: React.FC = () => {
   return (
     <MUIThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </MUIThemeProvider>
   );
 };

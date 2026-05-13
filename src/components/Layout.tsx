@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Drawer,
@@ -15,6 +15,10 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Badge,
+  Avatar,
+  Tooltip,
+  useMediaQuery,
   useTheme as useMUITheme,
 } from '@mui/material';
 import {
@@ -23,15 +27,20 @@ import {
   ReceiptLong,
   PendingActions,
   Logout,
-  Brightness4,
-  Brightness7,
   AccountCircle,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Menu as MenuIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { useTheme } from '../contexts/ThemeContext';
+import { applyGlassEffect } from '../theme/glassmorphism';
+import ThemeToggle from './ThemeToggle';
 
-const drawerWidth = 280;
+const drawerWidth = 260;
+const collapsedDrawerWidth = 72;
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -41,13 +50,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = authService.getCurrentUser();
-  const { mode, toggleTheme } = useTheme();
+  const { mode } = useTheme();
   const muiTheme = useMUITheme();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const glassEffect = applyGlassEffect(mode, 'elevated');
 
   const handleLogout = async () => {
+    handleMenuClose();
     await authService.logout();
-    navigate('/login');
+    // Full navigation to login on this app’s origin (e.g. http://localhost:4001/login in dev).
+    window.location.replace(`${window.location.origin}/login`);
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -59,81 +74,290 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
-    { text: 'Users', icon: <People />, path: '/users' },
-    { text: 'Transactions', icon: <ReceiptLong />, path: '/transactions' },
-    { text: 'Withdrawals', icon: <PendingActions />, path: '/withdrawals' },
+    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', badge: null },
+    { text: 'Users', icon: <People />, path: '/users', badge: null },
+    { text: 'Transactions', icon: <ReceiptLong />, path: '/transactions', badge: null },
+    { text: 'Withdrawals', icon: <PendingActions />, path: '/withdrawals', badge: 3 }, // Example badge
   ];
 
-  return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <AppBar
-        position="fixed"
+  const getPageTitle = () => {
+    const currentItem = menuItems.find(item => item.path === location.pathname);
+    return currentItem?.text || 'Dashboard';
+  };
+
+  const handleMobileMenuItemClick = (path: string) => {
+    navigate(path);
+    setMobileDrawerOpen(false);
+  };
+
+  const drawerContent = (
+    <>
+      {/* Sidebar Header */}
+      <Toolbar
         sx={{
-          width: `calc(100% - ${drawerWidth}px)`,
-          ml: `${drawerWidth}px`,
-          backgroundColor: muiTheme.palette.mode === 'dark' ? '#111111' : '#FFFFFF', // Match price predictor navbar exact
-          background: mode === 'dark'
-            ? '#111111'
-            : 'linear-gradient(135deg, #d4af37 0%, #c28800 100%)',
-          borderBottom: muiTheme.palette.mode === 'dark' ? '1px solid #1f1f1f' : '1px solid #E0E0E0', // Match price predictor exact
-          boxShadow: muiTheme.palette.mode === 'dark' 
-            ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
-            : '0 2px 8px rgba(0, 0, 0, 0.1)',
-          zIndex: (theme) => theme.zIndex.drawer + 1,
+          minHeight: '70px !important',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 2,
         }}
       >
-        <Toolbar>
-          <Typography 
-            variant="h6" 
-            noWrap 
-            component="div" 
-            sx={{ 
-              flexGrow: 1,
-              fontWeight: 600,
-              color: mode === 'dark' ? '#F5D300' : '#FFFFFF',
-            }}
-          >
-            KGF Gold TradeX - Admin Portal
-          </Typography>
-
-          {/* Theme Toggle */}
-          <IconButton
-            onClick={toggleTheme}
-            sx={{
-              color: mode === 'dark' ? '#F5D300' : '#FFFFFF',
-              mr: 2,
-            }}
-            aria-label="toggle theme"
-          >
-            {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
-
-          {/* User Menu */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                display: { xs: 'none', sm: 'block' },
-                color: mode === 'dark' ? '#FFFFFF' : '#FFFFFF',
-                mr: 1,
-              }}
-            >
-              {user?.name || 'Admin'}
-            </Typography>
-            <IconButton
-              onClick={handleMenuOpen}
-              sx={{ 
-                color: mode === 'dark' ? '#F5D300' : '#FFFFFF',
-                '&:hover': {
-                  backgroundColor: mode === 'dark' 
-                    ? 'rgba(245, 211, 0, 0.1)' 
-                    : 'rgba(255, 255, 255, 0.2)',
+        {!sidebarCollapsed && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '& img': {
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
                 },
               }}
             >
-              <AccountCircle sx={{ fontSize: 32 }} />
+              <img src="/src/assets/kgf_logo.svg" alt="KGF Logo" />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.125rem' }}>
+              Admin
+            </Typography>
+          </Box>
+        )}
+        {sidebarCollapsed && (
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              '& img': {
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+              },
+            }}
+          >
+            <img src="/src/assets/kgf_logo.svg" alt="KGF Logo" />
+          </Box>
+        )}
+        {!isMobile && (
+          <Tooltip title={sidebarCollapsed ? 'Expand' : 'Collapse'}>
+            <IconButton
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              sx={{
+                background: mode === 'dark'
+                  ? 'rgba(245, 211, 0, 0.1)'
+                  : 'rgba(230, 194, 0, 0.1)',
+                '&:hover': {
+                  background: mode === 'dark'
+                    ? 'rgba(245, 211, 0, 0.2)'
+                    : 'rgba(230, 194, 0, 0.2)',
+                },
+              }}
+            >
+              {sidebarCollapsed ? <ChevronRight /> : <ChevronLeft />}
             </IconButton>
+          </Tooltip>
+        )}
+      </Toolbar>
+
+      <Divider
+        sx={{
+          borderColor: mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.08)'
+            : 'rgba(0, 0, 0, 0.08)',
+        }}
+      />
+
+      {/* Navigation Menu */}
+      <List sx={{ pt: 2, px: 1.5 }}>
+        {menuItems.map((item) => (
+          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+            <Tooltip title={sidebarCollapsed && !isMobile ? item.text : ''} placement="right">
+              <ListItemButton
+                selected={location.pathname === item.path}
+                onClick={() => isMobile ? handleMobileMenuItemClick(item.path) : navigate(item.path)}
+                sx={{
+                  borderRadius: '12px',
+                  py: 1.5,
+                  px: sidebarCollapsed && !isMobile ? 2 : 2,
+                  justifyContent: sidebarCollapsed && !isMobile ? 'center' : 'flex-start',
+                  minHeight: 48,
+                  transition: 'all 150ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+                  '&.Mui-selected': {
+                    ...glassEffect,
+                    background: mode === 'dark'
+                      ? 'linear-gradient(135deg, rgba(245, 211, 0, 0.15) 0%, rgba(245, 211, 0, 0.08) 100%)'
+                      : 'linear-gradient(135deg, rgba(230, 194, 0, 0.15) 0%, rgba(230, 194, 0, 0.08) 100%)',
+                    borderLeft: `4px solid ${mode === 'dark' ? '#F5D300' : '#E6C200'}`,
+                    '&:hover': {
+                      background: mode === 'dark'
+                        ? 'rgba(245, 211, 0, 0.18)'
+                        : 'rgba(230, 194, 0, 0.15)',
+                    },
+                  },
+                  '&:hover': {
+                    background: mode === 'dark' ? '#1a1a1a' : '#F5F5F5',
+                  },
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: sidebarCollapsed && !isMobile ? 'auto' : 40,
+                    color: location.pathname === item.path
+                      ? (mode === 'dark' ? '#F5D300' : '#E6C200')
+                      : (mode === 'dark' ? '#cccccc' : '#666'),
+                  }}
+                >
+                  {item.badge ? (
+                    <Badge badgeContent={item.badge} color="error">
+                      {item.icon}
+                    </Badge>
+                  ) : (
+                    item.icon
+                  )}
+                </ListItemIcon>
+                {(!sidebarCollapsed || isMobile) && (
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: '0.9375rem',
+                      fontWeight: location.pathname === item.path ? 600 : 500,
+                    }}
+                  />
+                )}
+              </ListItemButton>
+            </Tooltip>
+          </ListItem>
+        ))}
+      </List>
+    </>
+  );
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        minHeight: '100vh',
+        backgroundColor: mode === 'dark' ? '#000000' : '#FFFFFF',
+      }}
+    >
+      {/* Glass AppBar */}
+      <AppBar
+        position="fixed"
+        elevation={0}
+        sx={{
+          width: isMobile ? '100%' : `calc(100% - ${sidebarCollapsed ? collapsedDrawerWidth : drawerWidth}px)`,
+          ml: isMobile ? 0 : `${sidebarCollapsed ? collapsedDrawerWidth : drawerWidth}px`,
+          transition: 'width 750ms cubic-bezier(0.25, 0.1, 0.25, 1), margin-left 750ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+          backgroundColor: mode === 'dark' ? 'rgba(17, 17, 17, 0.92)' : 'rgba(255, 255, 255, 0.92)',
+          backdropFilter: 'blur(24px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+          borderBottom: mode === 'dark'
+            ? '1px solid rgba(255, 255, 255, 0.08)'
+            : '1px solid rgba(0, 0, 0, 0.1)',
+          boxShadow: 'none',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar sx={{ minHeight: { xs: '64px', sm: '70px' }, px: { xs: 2, sm: 3 } }}>
+          {/* Mobile Menu Button */}
+          {isMobile && (
+            <IconButton
+              edge="start"
+              onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
+              sx={{
+                mr: 2,
+                color: mode === 'dark' ? '#F5D300' : '#E6C200',
+                background: 'transparent',
+                '&:hover': {
+                  background: mode === 'dark' ? '#1a1a1a' : '#F5F5F5',
+                },
+              }}
+              aria-label="open drawer"
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+
+          {/* Page Title */}
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                background: mode === 'dark'
+                  ? 'linear-gradient(135deg, #F5D300 0%, #FFE55C 100%)'
+                  : 'linear-gradient(135deg, #E6C200 0%, #B8A000 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {getPageTitle()}
+            </Typography>
+          </Box>
+
+          {/* Theme Toggle */}
+          <ThemeToggle disableHoverAnimation sx={{ mr: { xs: 1, sm: 2 } }} />
+
+          {/* User Menu */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
+            {!isMobile && (
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'column', alignItems: 'flex-end' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: '0.875rem' }}>
+                  {user?.name || 'Admin User'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: mode === 'dark' ? '#cccccc' : '#666',
+                    textTransform: 'uppercase',
+                    fontSize: '0.6875rem',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Super Admin
+                </Typography>
+              </Box>
+            )}
+            <Tooltip title="Account">
+              <IconButton
+                onClick={handleMenuOpen}
+                sx={{
+                  p: 0,
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                  },
+                  transition: 'transform 150ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: { xs: 36, sm: 40 },
+                    height: { xs: 36, sm: 40 },
+                    background: mode === 'dark'
+                      ? 'linear-gradient(135deg, #F5D300 0%, #FF8F00 100%)'
+                      : 'linear-gradient(135deg, #E6C200 0%, #B8A000 100%)',
+                    border: mode === 'dark'
+                      ? '2px solid rgba(245, 211, 0, 0.3)'
+                      : '2px solid rgba(230, 194, 0, 0.3)',
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    fontWeight: 700,
+                    color: mode === 'dark' ? '#000' : '#FFF',
+                  }}
+                >
+                  {user?.name?.charAt(0) || 'A'}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
             <Menu
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
@@ -146,49 +370,51 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 vertical: 'top',
                 horizontal: 'right',
               }}
-              PaperProps={{
-                sx: {
-                  backgroundColor: muiTheme.palette.mode === 'dark' ? '#121212' : '#FFFFFF', // Match price predictor sidebar exact
-                  border: muiTheme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E0E0E0', // Match price predictor exact
-                  boxShadow: muiTheme.palette.mode === 'dark'
-                    ? '0 4px 20px rgba(0, 0, 0, 0.5)'
-                    : '0 4px 20px rgba(0, 0, 0, 0.15)',
+              sx={{
+                '& .MuiPaper-root': {
+                  mt: 1.5,
+                  minWidth: 200,
+                  borderRadius: '12px',
+                  ...glassEffect,
                 },
               }}
             >
-              <MenuItem 
+              <MenuItem
                 onClick={handleMenuClose}
                 sx={{
-                  color: muiTheme.palette.mode === 'dark' ? '#FFFFFF' : '#111827', // Match price predictor exact
-                  '&:hover': {
-                    backgroundColor: muiTheme.palette.mode === 'dark' 
-                      ? 'rgba(255, 255, 255, 0.05)' 
-                      : 'rgba(0, 0, 0, 0.04)',
-                  },
+                  borderRadius: '8px',
+                  m: 0.5,
+                  py: 1.5,
                 }}
               >
-                <AccountCircle sx={{ mr: 1 }} />
+                <AccountCircle sx={{ mr: 1.5 }} />
                 Profile
               </MenuItem>
-              <Divider 
+              <MenuItem
+                onClick={handleMenuClose}
                 sx={{
-                  borderColor: muiTheme.palette.mode === 'dark' 
-                    ? 'rgba(255, 255, 255, 0.1)' 
-                    : '#E0E0E0', // Match price predictor exact
+                  borderRadius: '8px',
+                  m: 0.5,
+                  py: 1.5,
                 }}
-              />
-              <MenuItem 
+              >
+                <Settings sx={{ mr: 1.5 }} />
+                Settings
+              </MenuItem>
+              <Divider sx={{ my: 0.5 }} />
+              <MenuItem
                 onClick={handleLogout}
                 sx={{
-                  color: muiTheme.palette.mode === 'dark' ? '#FFFFFF' : '#111827', // Match price predictor exact
+                  borderRadius: '8px',
+                  m: 0.5,
+                  py: 1.5,
+                  color: '#ef4444',
                   '&:hover': {
-                    backgroundColor: muiTheme.palette.mode === 'dark' 
-                      ? 'rgba(255, 255, 255, 0.05)' 
-                      : 'rgba(0, 0, 0, 0.04)',
+                    background: 'rgba(239, 68, 68, 0.1)',
                   },
                 }}
               >
-                <Logout sx={{ mr: 1 }} />
+                <Logout sx={{ mr: 1.5 }} />
                 Logout
               </MenuItem>
             </Menu>
@@ -196,89 +422,77 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Toolbar>
       </AppBar>
 
-      <Drawer
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-            backgroundColor: muiTheme.palette.mode === 'dark' ? '#121212' : '#FFFFFF', // Match price predictor sidebar exact
-            borderRight: muiTheme.palette.mode === 'dark' 
-              ? '1px solid rgba(255, 255, 255, 0.1)' 
-              : '1px solid #E0E0E0', // Match price predictor exact
-          },
-        }}
-        variant="permanent"
-        anchor="left"
-      >
-        <Toolbar
+      {/* Desktop Drawer */}
+      {!isMobile && (
+        <Drawer
           sx={{
-            backgroundColor: muiTheme.palette.mode === 'dark' ? '#121212' : '#FFFFFF', // Match price predictor sidebar exact
-            background: mode === 'dark'
-              ? '#121212'
-              : 'linear-gradient(135deg, #d4af37 0%, #c28800 100%)',
-            color: mode === 'dark' ? '#FFFFFF' : '#000000', // Match price predictor exact
-            minHeight: '64px !important',
+            width: sidebarCollapsed ? collapsedDrawerWidth : drawerWidth,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: sidebarCollapsed ? collapsedDrawerWidth : drawerWidth,
+              boxSizing: 'border-box',
+              backgroundColor: mode === 'dark' ? 'rgba(18, 18, 18, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(40px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(40px) saturate(160%)',
+              border: 'none',
+              borderRight: mode === 'dark'
+                ? '1px solid rgba(255, 255, 255, 0.08)'
+                : '1px solid rgba(0, 0, 0, 0.1)',
+              transition: 'width 750ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+              overflowX: 'hidden',
+            },
+          }}
+          variant="permanent"
+          anchor="left"
+        >
+          {drawerContent}
+        </Drawer>
+      )}
+
+      {/* Mobile Drawer */}
+      {isMobile && (
+        <Drawer
+          anchor="left"
+          open={mobileDrawerOpen}
+          onClose={() => setMobileDrawerOpen(false)}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: 280,
+              boxSizing: 'border-box',
+              backgroundColor: mode === 'dark' ? 'rgba(18, 18, 18, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+              backdropFilter: 'blur(40px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(40px) saturate(160%)',
+              border: 'none',
+              borderRight: mode === 'dark'
+                ? '1px solid rgba(255, 255, 255, 0.08)'
+                : '1px solid rgba(0, 0, 0, 0.1)',
+            },
           }}
         >
-          <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 600 }}>
-            Admin Portal
-          </Typography>
-        </Toolbar>
-        <Divider 
-          sx={{
-            borderColor: muiTheme.palette.mode === 'dark' 
-              ? 'rgba(255, 255, 255, 0.1)' 
-              : '#E0E0E0', // Match price predictor exact
-          }}
-        />
-        <List sx={{ pt: 2 }}>
-          {menuItems.map((item) => (
-            <ListItem key={item.text} disablePadding sx={{ px: 1 }}>
-              <ListItemButton
-                selected={location.pathname === item.path}
-                onClick={() => navigate(item.path)}
-                sx={{
-                  borderRadius: '8px',
-                  mb: 0.5,
-                }}
-              >
-                <ListItemIcon
-                  sx={{
-                    color: location.pathname === item.path
-                      ? mode === 'dark' ? '#F5D300' : '#d4af37'
-                      : 'inherit',
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text}
-                  primaryTypographyProps={{
-                    fontWeight: location.pathname === item.path ? 600 : 400,
-                    color: location.pathname === item.path
-                      ? mode === 'dark' ? '#F5D300' : '#d4af37'
-                      : (mode === 'dark' ? '#FFFFFF' : '#111827'), // Match price predictor exact
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
+          {drawerContent}
+        </Drawer>
+      )}
 
+      {/* Main Content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          bgcolor: 'background.default',
-          p: 3,
+          p: { xs: 2, sm: 3 },
+          width: isMobile ? '100%' : `calc(100% - ${sidebarCollapsed ? collapsedDrawerWidth : drawerWidth}px)`,
           minHeight: '100vh',
+          mt: { xs: '64px', sm: '70px' },
         }}
       >
-        <Toolbar />
-        <Container maxWidth="xl">{children}</Container>
+        <Container
+          maxWidth={false}
+          sx={{
+            maxWidth: { xl: '1600px' },
+            px: { xs: 0, sm: 2 },
+          }}
+        >
+          {children}
+        </Container>
       </Box>
     </Box>
   );
