@@ -40,14 +40,14 @@ export const authService = {
   },
 
   logout: async (): Promise<void> => {
+    // Clear client session immediately so navigation to login is never blocked by the network.
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
     try {
       await api.post('/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
     }
   },
 
