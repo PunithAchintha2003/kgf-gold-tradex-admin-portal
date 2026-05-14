@@ -11,8 +11,9 @@ export interface User {
   email: string;
   phone: string;
   address: string;
-  role: 'SUPER_ADMIN' | 'USER';
-  isActive: boolean;
+  role: 'SUPER_ADMIN' | 'USER' | 'MERCHANT';
+  merchantVerified?: boolean;
+  isActive?: boolean;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +52,12 @@ export const authService = {
     }
   },
 
+  clearSession: (): void => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+  },
+
   getCurrentUser: (): User | null => {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
@@ -63,6 +70,11 @@ export const authService = {
   isSuperAdmin: (): boolean => {
     const user = authService.getCurrentUser();
     return user?.role === 'SUPER_ADMIN';
+  },
+
+  isMerchant: (): boolean => {
+    const user = authService.getCurrentUser();
+    return user?.role === 'MERCHANT';
   },
 };
 

@@ -3,7 +3,6 @@ import {
   Box,
   CardContent,
   Typography,
-  Table,
   TableHead,
   TableBody,
   TableRow,
@@ -156,7 +155,7 @@ const WithdrawalsPage: React.FC = () => {
               <CircularProgress size={60} sx={{ color: isDark ? '#F5D300' : '#E6C200' }} />
             </Box>
           ) : (
-            <GlassTable variant="subtle">
+            <GlassTable glassVariant="subtle">
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Request ID</TableCell>

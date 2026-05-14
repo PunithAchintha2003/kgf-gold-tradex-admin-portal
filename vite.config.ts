@@ -12,7 +12,8 @@ export default defineConfig({
     }),
   ],
   resolve: {
-    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
+    // Prefer TS/TSX over .js so stray compiled `foo.js` next to `foo.tsx` never shadows source.
+    extensions: ['.mjs', '.mts', '.ts', '.tsx', '.jsx', '.js', '.json'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },

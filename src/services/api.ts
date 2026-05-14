@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -15,6 +15,13 @@ api.interceptors.request.use(
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Let the browser set multipart boundaries for FormData uploads
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      const headers = config.headers;
+      if (headers && typeof headers.delete === 'function') {
+        headers.delete('Content-Type');
+      }
     }
     return config;
   },

@@ -1,5 +1,5 @@
 import { createTheme, ThemeOptions } from '@mui/material/styles';
-import { applyGlassEffect, glassGradients, glassButtonStates, glassFocusRing } from './glassmorphism';
+import { applyGlassEffect, glassButtonStates, glassFocusRing } from './glassmorphism';
 
 // Brand colors — exactly matched to kgf-gold-tradex-frontend Gold Price Prediction page
 const brandColors = {

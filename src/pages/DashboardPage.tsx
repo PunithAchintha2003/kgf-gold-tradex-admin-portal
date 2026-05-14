@@ -21,9 +21,10 @@ import {
   Login,
   TrendingDown,
   Refresh,
-  MoreVert,
   ReceiptLong,
   PendingActions,
+  Storefront,
+  Verified,
 } from '@mui/icons-material';
 import { adminService, DashboardStats } from '../services/adminService';
 // GlassCard not used — stat tiles and section containers use direct Box with frontend-matching styles
@@ -266,7 +267,6 @@ const DashboardPage: React.FC = () => {
       value: stats.superAdmins,
       icon: <AdminPanelSettings />,
       color: '#8b5cf6',            // purple — frontend Method tile
-      trend: null,
     },
     {
       title: 'Regular Users',
@@ -274,6 +274,18 @@ const DashboardPage: React.FC = () => {
       icon: <People />,
       color: '#3b82f6',            // blue — info
       trend: { value: 15.7, isPositive: true },
+    },
+    {
+      title: 'Merchants',
+      value: stats.merchants,
+      icon: <Storefront />,
+      color: '#f59e0b',            // amber — commerce / storefront
+    },
+    {
+      title: 'Verified Merchants',
+      value: stats.verifiedMerchants,
+      icon: <Verified />,
+      color: '#10b981',            // green — trust / verification
     },
     {
       title: 'New Users (30d)',

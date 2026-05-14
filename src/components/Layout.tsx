@@ -32,6 +32,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu as MenuIcon,
+  Inventory2,
+  Storefront,
+  LocalShipping,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/authService';
@@ -44,9 +47,10 @@ const collapsedDrawerWidth = 72;
 
 interface LayoutProps {
   children: React.ReactNode;
+  variant?: 'admin' | 'merchant';
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = authService.getCurrentUser();
@@ -73,15 +77,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setAnchorEl(null);
   };
 
-  const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', badge: null },
-    { text: 'Users', icon: <People />, path: '/users', badge: null },
+  const adminMenuItems = [
     { text: 'Transactions', icon: <ReceiptLong />, path: '/transactions', badge: null },
-    { text: 'Withdrawals', icon: <PendingActions />, path: '/withdrawals', badge: 3 }, // Example badge
+    { text: 'Withdrawals', icon: <PendingActions />, path: '/withdrawals', badge: 3 },
   ];
 
+  const merchantMenuItems = [
+    { text: 'Dashboard', icon: <Dashboard />, path: '/merchant', badge: null },
+    { text: 'Products', icon: <Inventory2 />, path: '/merchant/products', badge: null },
+    { text: 'Order management', icon: <LocalShipping />, path: '/merchant/orders', badge: null },
+  ];
+
+  const menuItems = variant === 'merchant' ? merchantMenuItems : adminMenuItems;
+
   const getPageTitle = () => {
-    const currentItem = menuItems.find(item => item.path === location.pathname);
+    if (variant === 'merchant') {
+      const currentItem = menuItems.find((item) => item.path === location.pathname);
+      return currentItem?.text || 'Dashboard';
+    }
+    if (location.pathname === '/dashboard') return 'Dashboard';
+    if (location.pathname === '/users') return 'User management';
+    if (location.pathname === '/merchants') return 'Merchants';
+    const currentItem = adminMenuItems.find((item) => item.path === location.pathname);
     return currentItem?.text || 'Dashboard';
   };
 
@@ -121,7 +138,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <img src="/src/assets/kgf_logo.svg" alt="KGF Logo" />
             </Box>
             <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.125rem' }}>
-              Admin
+              {variant === 'merchant' ? 'Merchant' : 'Admin'}
             </Typography>
           </Box>
         )}
@@ -173,66 +190,302 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       />
 
       {/* Navigation Menu */}
-      <List sx={{ pt: 2, px: 1.5 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-            <Tooltip title={sidebarCollapsed && !isMobile ? item.text : ''} placement="right">
-              <ListItemButton
-                selected={location.pathname === item.path}
-                onClick={() => isMobile ? handleMobileMenuItemClick(item.path) : navigate(item.path)}
-                sx={{
-                  borderRadius: '12px',
-                  py: 1.5,
-                  px: sidebarCollapsed && !isMobile ? 2 : 2,
-                  justifyContent: sidebarCollapsed && !isMobile ? 'center' : 'flex-start',
-                  minHeight: 48,
-                  transition: 'all 150ms cubic-bezier(0.4, 0.0, 0.2, 1)',
-                  '&.Mui-selected': {
-                    ...glassEffect,
-                    background: mode === 'dark'
-                      ? 'linear-gradient(135deg, rgba(245, 211, 0, 0.15) 0%, rgba(245, 211, 0, 0.08) 100%)'
-                      : 'linear-gradient(135deg, rgba(230, 194, 0, 0.15) 0%, rgba(230, 194, 0, 0.08) 100%)',
-                    borderLeft: `4px solid ${mode === 'dark' ? '#F5D300' : '#E6C200'}`,
-                    '&:hover': {
-                      background: mode === 'dark'
-                        ? 'rgba(245, 211, 0, 0.18)'
-                        : 'rgba(230, 194, 0, 0.15)',
-                    },
-                  },
-                  '&:hover': {
-                    background: mode === 'dark' ? '#1a1a1a' : '#F5F5F5',
-                  },
-                }}
-              >
-                <ListItemIcon
+      <List sx={{ pt: 2, px: 1.5 }} component="nav" aria-label="Main navigation">
+        {variant === 'merchant' ? (
+          menuItems.map((item) => (
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+              <Tooltip title={sidebarCollapsed && !isMobile ? item.text : ''} placement="right">
+                <ListItemButton
+                  selected={location.pathname === item.path}
+                  onClick={() => (isMobile ? handleMobileMenuItemClick(item.path) : navigate(item.path))}
                   sx={{
-                    minWidth: sidebarCollapsed && !isMobile ? 'auto' : 40,
-                    color: location.pathname === item.path
-                      ? (mode === 'dark' ? '#F5D300' : '#E6C200')
-                      : (mode === 'dark' ? '#cccccc' : '#666'),
+                    borderRadius: '12px',
+                    py: 1.5,
+                    px: sidebarCollapsed && !isMobile ? 2 : 2,
+                    justifyContent: sidebarCollapsed && !isMobile ? 'center' : 'flex-start',
+                    minHeight: 48,
+                    transition: 'all 150ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+                    '&.Mui-selected': {
+                      ...glassEffect,
+                      background: mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(245, 211, 0, 0.15) 0%, rgba(245, 211, 0, 0.08) 100%)'
+                        : 'linear-gradient(135deg, rgba(230, 194, 0, 0.15) 0%, rgba(230, 194, 0, 0.08) 100%)',
+                      borderLeft: `4px solid ${mode === 'dark' ? '#F5D300' : '#E6C200'}`,
+                      '&:hover': {
+                        background: mode === 'dark'
+                          ? 'rgba(245, 211, 0, 0.18)'
+                          : 'rgba(230, 194, 0, 0.15)',
+                      },
+                    },
+                    '&:hover': {
+                      background: mode === 'dark' ? '#1a1a1a' : '#F5F5F5',
+                    },
                   }}
                 >
-                  {item.badge ? (
-                    <Badge badgeContent={item.badge} color="error">
-                      {item.icon}
-                    </Badge>
-                  ) : (
-                    item.icon
-                  )}
-                </ListItemIcon>
-                {(!sidebarCollapsed || isMobile) && (
-                  <ListItemText
-                    primary={item.text}
-                    primaryTypographyProps={{
-                      fontSize: '0.9375rem',
-                      fontWeight: location.pathname === item.path ? 600 : 500,
+                  <ListItemIcon
+                    sx={{
+                      minWidth: sidebarCollapsed && !isMobile ? 'auto' : 40,
+                      color:
+                        location.pathname === item.path
+                          ? mode === 'dark'
+                            ? '#F5D300'
+                            : '#E6C200'
+                          : mode === 'dark'
+                            ? '#cccccc'
+                            : '#666',
                     }}
-                  />
-                )}
-              </ListItemButton>
-            </Tooltip>
-          </ListItem>
-        ))}
+                  >
+                    {item.badge ? (
+                      <Badge badgeContent={item.badge} color="error">
+                        {item.icon}
+                      </Badge>
+                    ) : (
+                      item.icon
+                    )}
+                  </ListItemIcon>
+                  {(!sidebarCollapsed || isMobile) && (
+                    <ListItemText
+                      primary={item.text}
+                      primaryTypographyProps={{
+                        fontSize: '0.9375rem',
+                        fontWeight: location.pathname === item.path ? 600 : 500,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            </ListItem>
+          ))
+        ) : (
+          <>
+            <ListItem disablePadding sx={{ mb: 0.5 }}>
+              <Tooltip title={sidebarCollapsed && !isMobile ? 'Dashboard' : ''} placement="right">
+                <ListItemButton
+                  selected={location.pathname === '/dashboard'}
+                  onClick={() => (isMobile ? handleMobileMenuItemClick('/dashboard') : navigate('/dashboard'))}
+                  sx={{
+                    borderRadius: '12px',
+                    py: 1.5,
+                    minHeight: 48,
+                    justifyContent: sidebarCollapsed && !isMobile ? 'center' : 'flex-start',
+                    transition: 'all 150ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+                    '&.Mui-selected': {
+                      ...glassEffect,
+                      background: mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(245, 211, 0, 0.15) 0%, rgba(245, 211, 0, 0.08) 100%)'
+                        : 'linear-gradient(135deg, rgba(230, 194, 0, 0.15) 0%, rgba(230, 194, 0, 0.08) 100%)',
+                      borderLeft: `4px solid ${mode === 'dark' ? '#F5D300' : '#E6C200'}`,
+                      '&:hover': {
+                        background: mode === 'dark'
+                          ? 'rgba(245, 211, 0, 0.18)'
+                          : 'rgba(230, 194, 0, 0.15)',
+                      },
+                    },
+                    '&:hover': { background: mode === 'dark' ? '#1a1a1a' : '#F5F5F5' },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: sidebarCollapsed && !isMobile ? 'auto' : 40,
+                      color:
+                        location.pathname === '/dashboard'
+                          ? mode === 'dark'
+                            ? '#F5D300'
+                            : '#E6C200'
+                          : mode === 'dark'
+                            ? '#cccccc'
+                            : '#666',
+                    }}
+                  >
+                    <Dashboard />
+                  </ListItemIcon>
+                  {(!sidebarCollapsed || isMobile) && (
+                    <ListItemText
+                      primary="Dashboard"
+                      primaryTypographyProps={{
+                        fontSize: '0.9375rem',
+                        fontWeight: location.pathname === '/dashboard' ? 600 : 500,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            </ListItem>
+
+            <ListItem disablePadding sx={{ mb: 0.5 }}>
+              <Tooltip title={sidebarCollapsed && !isMobile ? 'User management' : ''} placement="right">
+                <ListItemButton
+                  selected={location.pathname === '/users'}
+                  onClick={() => (isMobile ? handleMobileMenuItemClick('/users') : navigate('/users'))}
+                  sx={{
+                    borderRadius: '12px',
+                    py: 1.5,
+                    minHeight: 48,
+                    justifyContent: sidebarCollapsed && !isMobile ? 'center' : 'flex-start',
+                    transition: 'all 150ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+                    '&.Mui-selected': {
+                      ...glassEffect,
+                      background: mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(245, 211, 0, 0.15) 0%, rgba(245, 211, 0, 0.08) 100%)'
+                        : 'linear-gradient(135deg, rgba(230, 194, 0, 0.15) 0%, rgba(230, 194, 0, 0.08) 100%)',
+                      borderLeft: `4px solid ${mode === 'dark' ? '#F5D300' : '#E6C200'}`,
+                      '&:hover': {
+                        background: mode === 'dark'
+                          ? 'rgba(245, 211, 0, 0.18)'
+                          : 'rgba(230, 194, 0, 0.15)',
+                      },
+                    },
+                    '&:hover': { background: mode === 'dark' ? '#1a1a1a' : '#F5F5F5' },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: sidebarCollapsed && !isMobile ? 'auto' : 40,
+                      color:
+                        location.pathname === '/users'
+                          ? mode === 'dark'
+                            ? '#F5D300'
+                            : '#E6C200'
+                          : mode === 'dark'
+                            ? '#cccccc'
+                            : '#666',
+                    }}
+                  >
+                    <People />
+                  </ListItemIcon>
+                  {(!sidebarCollapsed || isMobile) && (
+                    <ListItemText
+                      primary="User management"
+                      primaryTypographyProps={{
+                        fontSize: '0.9375rem',
+                        fontWeight: location.pathname === '/users' ? 600 : 500,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            </ListItem>
+
+            <ListItem disablePadding sx={{ mb: 0.5 }}>
+              <Tooltip title={sidebarCollapsed && !isMobile ? 'Merchants' : ''} placement="right">
+                <ListItemButton
+                  selected={location.pathname === '/merchants'}
+                  onClick={() => (isMobile ? handleMobileMenuItemClick('/merchants') : navigate('/merchants'))}
+                  sx={{
+                    borderRadius: '12px',
+                    py: 1.5,
+                    minHeight: 48,
+                    justifyContent: sidebarCollapsed && !isMobile ? 'center' : 'flex-start',
+                    transition: 'all 150ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+                    '&.Mui-selected': {
+                      ...glassEffect,
+                      background: mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(245, 211, 0, 0.15) 0%, rgba(245, 211, 0, 0.08) 100%)'
+                        : 'linear-gradient(135deg, rgba(230, 194, 0, 0.15) 0%, rgba(230, 194, 0, 0.08) 100%)',
+                      borderLeft: `4px solid ${mode === 'dark' ? '#F5D300' : '#E6C200'}`,
+                      '&:hover': {
+                        background: mode === 'dark'
+                          ? 'rgba(245, 211, 0, 0.18)'
+                          : 'rgba(230, 194, 0, 0.15)',
+                      },
+                    },
+                    '&:hover': { background: mode === 'dark' ? '#1a1a1a' : '#F5F5F5' },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: sidebarCollapsed && !isMobile ? 'auto' : 40,
+                      color:
+                        location.pathname === '/merchants'
+                          ? mode === 'dark'
+                            ? '#F5D300'
+                            : '#E6C200'
+                          : mode === 'dark'
+                            ? '#cccccc'
+                            : '#666',
+                    }}
+                  >
+                    <Storefront />
+                  </ListItemIcon>
+                  {(!sidebarCollapsed || isMobile) && (
+                    <ListItemText
+                      primary="Merchants"
+                      primaryTypographyProps={{
+                        fontSize: '0.9375rem',
+                        fontWeight: location.pathname === '/merchants' ? 600 : 500,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            </ListItem>
+
+            {adminMenuItems.map((item) => (
+              <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+                <Tooltip title={sidebarCollapsed && !isMobile ? item.text : ''} placement="right">
+                  <ListItemButton
+                    selected={location.pathname === item.path}
+                    onClick={() => (isMobile ? handleMobileMenuItemClick(item.path) : navigate(item.path))}
+                    sx={{
+                      borderRadius: '12px',
+                      py: 1.5,
+                      px: sidebarCollapsed && !isMobile ? 2 : 2,
+                      justifyContent: sidebarCollapsed && !isMobile ? 'center' : 'flex-start',
+                      minHeight: 48,
+                      transition: 'all 150ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+                      '&.Mui-selected': {
+                        ...glassEffect,
+                        background: mode === 'dark'
+                          ? 'linear-gradient(135deg, rgba(245, 211, 0, 0.15) 0%, rgba(245, 211, 0, 0.08) 100%)'
+                          : 'linear-gradient(135deg, rgba(230, 194, 0, 0.15) 0%, rgba(230, 194, 0, 0.08) 100%)',
+                        borderLeft: `4px solid ${mode === 'dark' ? '#F5D300' : '#E6C200'}`,
+                        '&:hover': {
+                          background: mode === 'dark'
+                            ? 'rgba(245, 211, 0, 0.18)'
+                            : 'rgba(230, 194, 0, 0.15)',
+                        },
+                      },
+                      '&:hover': {
+                        background: mode === 'dark' ? '#1a1a1a' : '#F5F5F5',
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: sidebarCollapsed && !isMobile ? 'auto' : 40,
+                        color:
+                          location.pathname === item.path
+                            ? mode === 'dark'
+                              ? '#F5D300'
+                              : '#E6C200'
+                            : mode === 'dark'
+                              ? '#cccccc'
+                              : '#666',
+                      }}
+                    >
+                      {item.badge ? (
+                        <Badge badgeContent={item.badge} color="error">
+                          {item.icon}
+                        </Badge>
+                      ) : (
+                        item.icon
+                      )}
+                    </ListItemIcon>
+                    {(!sidebarCollapsed || isMobile) && (
+                      <ListItemText
+                        primary={item.text}
+                        primaryTypographyProps={{
+                          fontSize: '0.9375rem',
+                          fontWeight: location.pathname === item.path ? 600 : 500,
+                        }}
+                      />
+                    )}
+                  </ListItemButton>
+                </Tooltip>
+              </ListItem>
+            ))}
+          </>
+        )}
       </List>
     </>
   );
@@ -324,7 +577,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     letterSpacing: '0.05em',
                   }}
                 >
-                  Super Admin
+                  {variant === 'merchant'
+                    ? user?.merchantVerified
+                      ? 'Verified seller'
+                      : 'Verification pending'
+                    : 'Super Admin'}
                 </Typography>
               </Box>
             )}
