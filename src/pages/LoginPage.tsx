@@ -76,14 +76,26 @@ const LoginPage: React.FC = () => {
 
     try {
       const response = await authService.login({ email, password });
-      
-      if (response.success && response.data.user.role === 'SUPER_ADMIN') {
-        navigate('/dashboard');
-      } else {
-        setError('Access denied. Super admin privileges required.');
+
+      if (!response.success) {
+        setError('Login failed. Please try again.');
         setShake(true);
-        await authService.logout();
+        return;
       }
+
+      const role = response.data.user.role;
+      if (role === 'SUPER_ADMIN') {
+        navigate('/dashboard');
+        return;
+      }
+      if (role === 'MERCHANT') {
+        navigate('/merchant');
+        return;
+      }
+
+      setError('This portal is only for administrators and merchants. Please use the customer site for standard accounts.');
+      setShake(true);
+      await authService.logout();
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Login failed. Please check your credentials.');
       setShake(true);
@@ -189,7 +201,8 @@ const LoginPage: React.FC = () => {
                 fontWeight: 500,
               }}
             >
-              Administrator portal — secure access for authorized staff only.
+              Secure sign-in for administrators and verified merchants — one gateway, role-aware routing after
+              authentication.
             </Typography>
           </Box>
 
@@ -198,9 +211,9 @@ const LoginPage: React.FC = () => {
           </Typography>
           <List dense disablePadding sx={{ py: 0 }}>
             {[
-              'Review users, roles, and account status',
-              'Monitor deposits, withdrawals, and gold trades',
-              'Support operations with an audited session trail',
+              'Administrators: manage users, money movement, and operational controls',
+              'Merchants: manage your product catalog, inventory, and publishing status',
+              'Every session is authenticated against the same secure API with audited access patterns',
             ].map((text) => (
               <ListItem key={text} disableGutters sx={{ py: 0.5, alignItems: 'flex-start' }}>
                 <ListItemIcon sx={{ minWidth: 36, mt: 0.25 }}>
@@ -250,7 +263,7 @@ const LoginPage: React.FC = () => {
                     mb: 0.5,
                   }}
                 >
-                  Administrators only
+                  Administrators & merchants
                 </Typography>
                 <Typography
                   variant="body2"
@@ -259,8 +272,8 @@ const LoginPage: React.FC = () => {
                     lineHeight: 1.65,
                   }}
                 >
-                  For designated administrators. If you are not authorized, do not sign in.
-                  Misuse may breach policy and the law.
+                  Only designated administrators and merchant accounts can continue. If you are unsure which access
+                  you should use, stop and contact your platform owner.
                 </Typography>
               </Box>
             </Stack>
@@ -326,7 +339,7 @@ const LoginPage: React.FC = () => {
                     lineHeight: 1.6,
                   }}
                 >
-                  Enter the email and password issued to your administrator account.
+                  Enter the email and password issued to your administrator or merchant account.
                 </Typography>
               </Box>
 

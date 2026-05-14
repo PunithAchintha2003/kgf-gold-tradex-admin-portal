@@ -5,7 +5,6 @@ import {
   Typography,
   Tabs,
   Tab,
-  Table,
   TableHead,
   TableRow,
   TableCell,
@@ -186,7 +185,7 @@ const TransactionsPage: React.FC = () => {
               <CircularProgress size={60} sx={{ color: isDark ? '#F5D300' : '#E6C200' }} />
             </Box>
           ) : tab === 0 ? (
-            <GlassTable variant="subtle">
+            <GlassTable glassVariant="subtle">
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>ID</TableCell>
@@ -325,7 +324,7 @@ const TransactionsPage: React.FC = () => {
               </TableBody>
             </GlassTable>
           ) : (
-            <GlassTable variant="subtle">
+            <GlassTable glassVariant="subtle">
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>ID</TableCell>
