@@ -6,6 +6,8 @@ export interface MerchantDashboardStats {
   publishedProducts: number;
   draftProducts: number;
   inventoryUnits: number;
+  totalIncomeLkr: number;
+  totalOrderCount: number;
 }
 
 export interface MerchantProduct {

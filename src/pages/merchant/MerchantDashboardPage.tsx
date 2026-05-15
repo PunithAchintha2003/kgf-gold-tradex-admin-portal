@@ -9,7 +9,7 @@ import {
   Typography,
   useTheme as useMUITheme,
 } from '@mui/material';
-import { Inventory2, PublishedWithChanges, EditNote, Verified } from '@mui/icons-material';
+import { Inventory2, PublishedWithChanges, EditNote, Verified, Payments, ShoppingCart } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { merchantService, MerchantDashboardStats } from '../../services/merchantService';
 
@@ -259,6 +259,24 @@ const MerchantDashboardPage: React.FC = () => {
             value={stats.inventoryUnits}
             icon={<Inventory2 />}
             color="#8b5cf6"
+            loading={refreshing}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatTile
+            title="Total income (LKR)"
+            value={stats.totalIncomeLkr.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            icon={<Payments />}
+            color="#f59e0b"
+            loading={refreshing}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatTile
+            title="Total orders"
+            value={stats.totalOrderCount}
+            icon={<ShoppingCart />}
+            color="#ec4899"
             loading={refreshing}
           />
         </Grid>
