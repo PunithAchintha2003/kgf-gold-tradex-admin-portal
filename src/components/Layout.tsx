@@ -35,6 +35,8 @@ import {
   Inventory2,
   Storefront,
   LocalShipping,
+  Gavel,
+  EmojiEvents,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/authService';
@@ -86,6 +88,8 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
     { text: 'Dashboard', icon: <Dashboard />, path: '/merchant', badge: null },
     { text: 'Products', icon: <Inventory2 />, path: '/merchant/products', badge: null },
     { text: 'Order management', icon: <LocalShipping />, path: '/merchant/orders', badge: null },
+    { text: 'Auctions', icon: <Gavel />, path: '/merchant/auctions', badge: null },
+    { text: 'Auction management', icon: <EmojiEvents />, path: '/merchant/auctions/management', badge: null },
   ];
 
   const menuItems = variant === 'merchant' ? merchantMenuItems : adminMenuItems;

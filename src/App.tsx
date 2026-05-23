@@ -9,6 +9,8 @@ import WithdrawalsPage from './pages/WithdrawalsPage';
 import MerchantDashboardPage from './pages/merchant/MerchantDashboardPage';
 import MerchantProductsPage from './pages/merchant/MerchantProductsPage';
 import MerchantOrdersPage from './pages/merchant/MerchantOrdersPage';
+import MerchantAuctionsPage from './pages/merchant/MerchantAuctionsPage';
+import MerchantAuctionManagementPage from './pages/merchant/MerchantAuctionManagementPage';
 import Layout from './components/Layout';
 import { authService } from './services/authService';
 
@@ -132,6 +134,26 @@ const App: React.FC = () => {
           <MerchantProtectedRoute>
             <Layout variant="merchant">
               <MerchantOrdersPage />
+            </Layout>
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/merchant/auctions"
+        element={
+          <MerchantProtectedRoute>
+            <Layout variant="merchant">
+              <MerchantAuctionsPage />
+            </Layout>
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/merchant/auctions/management"
+        element={
+          <MerchantProtectedRoute>
+            <Layout variant="merchant">
+              <MerchantAuctionManagementPage />
             </Layout>
           </MerchantProtectedRoute>
         }
