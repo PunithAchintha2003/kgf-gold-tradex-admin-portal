@@ -3,14 +3,10 @@ import {
   Alert,
   Avatar,
   Box,
-  Button,
   CardContent,
   Chip,
   CircularProgress,
   Collapse,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   InputAdornment,
   Stack,
@@ -19,7 +15,6 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -31,17 +26,16 @@ import {
   Gavel,
   Refresh,
   Search,
-  Send,
 } from '@mui/icons-material';
 import { useTheme as useMUITheme } from '@mui/material/styles';
 import {
   auctionService,
   type AuctionBidRow,
-  type ChatMessage,
   type MerchantAuction,
 } from '../../services/auctionService';
 import { connectSocket, getSocket } from '../../services/socket';
-import { GlassCard, GlassInput, GlassModal, GlassTable } from '../../components/Glass';
+import { GlassCard, GlassInput, GlassTable } from '../../components/Glass';
+import { useMerchantChat } from '../../contexts/MerchantChatContext';
 
 function formatLkr(n: number) {
   return `LKR ${Math.round(n).toLocaleString('en-LK')}`;
@@ -94,6 +88,7 @@ function matchesSearch(a: MerchantAuction, q: string) {
 const MerchantAuctionManagementPage: React.FC = () => {
   const muiTheme = useMUITheme();
   const isDark = muiTheme.palette.mode === 'dark';
+  const { openChatByAuctionId } = useMerchantChat();
 
   const [auctions, setAuctions] = useState<MerchantAuction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,14 +100,6 @@ const MerchantAuctionManagementPage: React.FC = () => {
   const [bidsByAuction, setBidsByAuction] = useState<Record<string, AuctionBidRow[]>>({});
   const [loadingBids, setLoadingBids] = useState<string | null>(null);
   const [, setTick] = useState(0);
-
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatAuction, setChatAuction] = useState<MerchantAuction | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const [sendingChat, setSendingChat] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
@@ -199,24 +186,6 @@ const MerchantAuctionManagementPage: React.FC = () => {
   }, [auctions.map((a) => a.id).join(',')]);
 
   useEffect(() => {
-    if (!conversationId || !chatOpen) return;
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('chat:join', { conversationId });
-    const onMessage = (msg: ChatMessage) => {
-      if (msg.conversationId !== conversationId) return;
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, { ...msg, isOwn: false }];
-      });
-    };
-    socket.on('chat:message', onMessage);
-    return () => {
-      socket.off('chat:message', onMessage);
-    };
-  }, [conversationId, chatOpen]);
-
-  useEffect(() => {
     const t = setTimeout(() => setPage(0), 400);
     return () => clearTimeout(t);
   }, [search]);
@@ -252,43 +221,6 @@ const MerchantAuctionManagementPage: React.FC = () => {
       } finally {
         setLoadingBids(null);
       }
-    }
-  };
-
-  const openWinnerChat = async (auction: MerchantAuction) => {
-    setChatAuction(auction);
-    setChatOpen(true);
-    setChatLoading(true);
-    setMessages([]);
-    setChatInput('');
-    try {
-      const convId = await auctionService.getWinnerConversationId(auction.id);
-      setConversationId(convId);
-      const msgs = await auctionService.getMessages(convId);
-      setMessages(msgs);
-      await auctionService.markRead(convId);
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } }; message?: string };
-      setError(e.response?.data?.error || e.message || 'Could not open chat');
-      setChatOpen(false);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const sendChat = async () => {
-    if (!conversationId || !chatInput.trim()) return;
-    const text = chatInput.trim();
-    setChatInput('');
-    setSendingChat(true);
-    try {
-      const msg = await auctionService.sendMessage(conversationId, text);
-      setMessages((prev) => [...prev, msg]);
-    } catch {
-      setError('Failed to send message');
-      setChatInput(text);
-    } finally {
-      setSendingChat(false);
     }
   };
 
@@ -359,7 +291,7 @@ const MerchantAuctionManagementPage: React.FC = () => {
         </Box>
       </GlassCard>
 
-      {error && !chatOpen && (
+      {error && (
         <Alert
           severity="error"
           sx={{
@@ -505,7 +437,7 @@ const MerchantAuctionManagementPage: React.FC = () => {
                                 <Tooltip title="Chat with winner">
                                   <IconButton
                                     size="small"
-                                    onClick={() => void openWinnerChat(a)}
+                                    onClick={() => void openChatByAuctionId(a.id)}
                                     sx={{
                                       color: isDark ? '#F5D300' : '#E6C200',
                                       '&:hover': {
@@ -625,129 +557,6 @@ const MerchantAuctionManagementPage: React.FC = () => {
         </CardContent>
       </GlassCard>
 
-      <GlassModal open={chatOpen} onClose={() => !sendingChat && setChatOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle
-          sx={{
-            borderBottom: isDark ? '1px solid rgba(245, 211, 0, 0.1)' : '1px solid rgba(230, 194, 0, 0.1)',
-            fontWeight: 800,
-          }}
-        >
-          Chat with winner
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2, display: 'flex', flexDirection: 'column', minHeight: 320 }}>
-          {error && chatOpen && (
-            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
-          <Typography variant="body2" sx={{ color: isDark ? '#9ca3af' : '#6b7280', mb: 2 }}>
-            <strong>{chatAuction?.title}</strong>
-            {chatAuction?.winner?.name ? ` — ${chatAuction.winner.name}` : ''}
-          </Typography>
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 220,
-              maxHeight: 360,
-              overflow: 'auto',
-              p: 1.5,
-              borderRadius: 2,
-              border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
-              background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)',
-            }}
-          >
-            {chatLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress size={36} sx={{ color: isDark ? '#F5D300' : '#E6C200' }} />
-              </Box>
-            ) : messages.length === 0 ? (
-              <Typography variant="body2" sx={{ color: isDark ? '#6b7280' : '#9ca3af', textAlign: 'center', py: 4 }}>
-                No messages yet. Say hello to arrange payment and delivery.
-              </Typography>
-            ) : (
-              messages.map((m) => (
-                <Box
-                  key={m.id}
-                  sx={{
-                    display: 'flex',
-                    justifyContent: m.isOwn ? 'flex-end' : 'flex-start',
-                    mb: 1,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      maxWidth: '85%',
-                      px: 1.5,
-                      py: 1,
-                      borderRadius: 2,
-                      ...(m.isOwn
-                        ? {
-                            background: isDark
-                              ? 'linear-gradient(135deg, #F5D300 0%, #B8A000 100%)'
-                              : 'linear-gradient(135deg, #E6C200 0%, #B8A000 100%)',
-                            color: isDark ? '#000' : '#FFF',
-                          }
-                        : {
-                            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                          }),
-                    }}
-                  >
-                    <Typography variant="body2">{m.text}</Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        opacity: 0.75,
-                        display: 'block',
-                        mt: 0.25,
-                        fontSize: '0.65rem',
-                      }}
-                    >
-                      {new Date(m.createdAt).toLocaleTimeString()}
-                    </Typography>
-                  </Box>
-                </Box>
-              ))
-            )}
-          </Box>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Type a message…"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            disabled={chatLoading || sendingChat}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void sendChat();
-              }
-            }}
-            sx={{ mt: 2 }}
-            InputProps={{
-              sx: { borderRadius: '10px' },
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => void sendChat()}
-                    disabled={!chatInput.trim() || sendingChat}
-                    sx={{ color: isDark ? '#F5D300' : '#E6C200' }}
-                  >
-                    <Send fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5 }}>
-          <Button
-            onClick={() => setChatOpen(false)}
-            sx={{ textTransform: 'none', fontWeight: 700, color: isDark ? '#9ca3af' : '#6b7280' }}
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </GlassModal>
     </Box>
   );
 };

@@ -43,6 +43,8 @@ import { authService } from '../services/authService';
 import { useTheme } from '../contexts/ThemeContext';
 import { applyGlassEffect } from '../theme/glassmorphism';
 import ThemeToggle from './ThemeToggle';
+import { MerchantChatLauncher } from './chat/MerchantChatLauncher';
+import { MerchantChatSidebar } from './chat/MerchantChatSidebar';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 72;
@@ -755,6 +757,13 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
           {children}
         </Container>
       </Box>
+
+      {variant === 'merchant' && (
+        <>
+          <MerchantChatLauncher />
+          <MerchantChatSidebar />
+        </>
+      )}
     </Box>
   );
 };
