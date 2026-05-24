@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import UsersPage from './pages/UsersPage';
 import MerchantsPage from './pages/MerchantsPage';
@@ -57,6 +58,7 @@ const App: React.FC = () => {
           )
         }
       />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/users/merchants" element={<Navigate to="/merchants" replace />} />
       <Route
         path="/dashboard"

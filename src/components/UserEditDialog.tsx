@@ -19,16 +19,28 @@ export interface UserEditDialogProps {
   open: boolean;
   user: User | null;
   onClose: () => void;
-  onSave: (user: User) => void;
+  onSave: (user: User) => Promise<void>;
+  /** Merchants directory: hide role field (always MERCHANT) */
+  merchantDirectory?: boolean;
 }
 
-export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onClose, onSave }) => {
+export const UserEditDialog: React.FC<UserEditDialogProps> = ({
+  open,
+  user,
+  onClose,
+  onSave,
+  merchantDirectory = false,
+}) => {
   const [role, setRole] = useState<'SUPER_ADMIN' | 'USER' | 'MERCHANT'>('USER');
   const [isActive, setIsActive] = useState(true);
   const [merchantVerified, setMerchantVerified] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const muiTheme = useMUITheme();
   const isDark = muiTheme.palette.mode === 'dark';
+
+  const isMerchantAccount =
+    merchantDirectory || user?.role === 'MERCHANT' || role === 'MERCHANT';
 
   useEffect(() => {
     if (user) {
@@ -44,16 +56,32 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
     }
   }, [user]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!user) return;
     setError('');
-    onSave({
-      ...user,
-      role,
-      isActive,
-      ...(role === 'MERCHANT' ? { merchantVerified } : {}),
-    });
+    setSaving(true);
+    try {
+      await onSave({
+        ...user,
+        role: merchantDirectory ? 'MERCHANT' : role,
+        isActive,
+        ...(isMerchantAccount ? { merchantVerified } : {}),
+      });
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string; message?: string } }; message?: string };
+      setError(
+        axiosErr.response?.data?.error ||
+          axiosErr.response?.data?.message ||
+          (err instanceof Error ? err.message : 'Failed to update user')
+      );
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const emailHelperText = isMerchantAccount
+    ? 'Merchant email cannot be changed by administrators.'
+    : 'Cannot be changed by super admin';
 
   return (
     <GlassModal open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -62,19 +90,11 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
           borderBottom: isDark ? '1px solid rgba(245, 211, 0, 0.1)' : '1px solid rgba(230, 194, 0, 0.1)',
         }}
       >
-        Edit User
+        {isMerchantAccount ? 'Edit merchant' : 'Edit user'}
       </DialogTitle>
       <DialogContent>
         {error && (
-          <Alert
-            severity="error"
-            sx={{
-              mb: 2,
-              mt: 2,
-              borderRadius: '10px',
-            }}
-            onClose={() => setError('')}
-          >
+          <Alert severity="error" sx={{ mb: 2, mt: 2, borderRadius: '10px' }} onClose={() => setError('')}>
             {error}
           </Alert>
         )}
@@ -89,9 +109,10 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
           <GlassInput
             fullWidth
             label="Email"
+            type="email"
             value={user?.email || ''}
             disabled
-            helperText="Cannot be changed by super admin"
+            helperText={emailHelperText}
           />
           <GlassInput
             fullWidth
@@ -109,18 +130,20 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
             disabled
             helperText="Cannot be changed by super admin"
           />
-          <GlassInput
-            fullWidth
-            select
-            label="Role"
-            value={role}
-            onChange={(e) => setRole(e.target.value as 'SUPER_ADMIN' | 'USER' | 'MERCHANT')}
-          >
-            <MenuItem value="USER">USER</MenuItem>
-            <MenuItem value="MERCHANT">MERCHANT</MenuItem>
-            <MenuItem value="SUPER_ADMIN">SUPER_ADMIN</MenuItem>
-          </GlassInput>
-          {role === 'MERCHANT' && (
+          {!merchantDirectory && (
+            <GlassInput
+              fullWidth
+              select
+              label="Role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as 'SUPER_ADMIN' | 'USER' | 'MERCHANT')}
+            >
+              <MenuItem value="USER">USER</MenuItem>
+              <MenuItem value="MERCHANT">MERCHANT</MenuItem>
+              <MenuItem value="SUPER_ADMIN">SUPER_ADMIN</MenuItem>
+            </GlassInput>
+          )}
+          {isMerchantAccount && (
             <Box
               sx={{
                 p: 2,
@@ -156,14 +179,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
             </Box>
           )}
           <Box>
-            <Typography
-              variant="body2"
-              gutterBottom
-              sx={{
-                color: isDark ? '#9ca3af' : '#6b7280',
-                mb: 1.5,
-              }}
-            >
+            <Typography variant="body2" gutterBottom sx={{ color: isDark ? '#9ca3af' : '#6b7280', mb: 1.5 }}>
               Status
             </Typography>
             <Box sx={{ display: 'flex', gap: 1.5 }}>
@@ -173,14 +189,8 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
                 sx={{
                   flex: 1,
                   ...(isActive
-                    ? {
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                        color: '#FFF',
-                      }
-                    : {
-                        borderColor: 'rgba(16, 185, 129, 0.3)',
-                        color: '#10b981',
-                      }),
+                    ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#FFF' }
+                    : { borderColor: 'rgba(16, 185, 129, 0.3)', color: '#10b981' }),
                 }}
               >
                 Active
@@ -191,14 +201,8 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
                 sx={{
                   flex: 1,
                   ...(!isActive
-                    ? {
-                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                        color: '#FFF',
-                      }
-                    : {
-                        borderColor: 'rgba(239, 68, 68, 0.3)',
-                        color: '#ef4444',
-                      }),
+                    ? { background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#FFF' }
+                    : { borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444' }),
                 }}
               >
                 Inactive
@@ -208,17 +212,13 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
         </Box>
       </DialogContent>
       <DialogActions sx={{ p: 2.5 }}>
-        <Button
-          onClick={onClose}
-          sx={{
-            color: isDark ? '#9ca3af' : '#6b7280',
-          }}
-        >
+        <Button onClick={onClose} sx={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
           Cancel
         </Button>
         <GlassButton
-          onClick={handleSave}
+          onClick={() => void handleSave()}
           variant="contained"
+          disabled={saving}
           sx={{
             background: isDark
               ? 'linear-gradient(135deg, #F5D300 0%, #B8A000 100%)'
@@ -226,7 +226,7 @@ export const UserEditDialog: React.FC<UserEditDialogProps> = ({ open, user, onCl
             color: isDark ? '#000' : '#FFF',
           }}
         >
-          Save Changes
+          {saving ? 'Saving…' : 'Save Changes'}
         </GlassButton>
       </DialogActions>
     </GlassModal>

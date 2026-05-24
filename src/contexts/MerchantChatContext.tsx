@@ -43,9 +43,17 @@ const MerchantChatContext = createContext<MerchantChatContextType | null>(null);
 const MESSAGE_PAGE_SIZE = 50;
 
 export const MerchantChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { showInfo, showSuccess } = useToast();
-  const user = authService.getCurrentUser();
-  const isMerchant = authService.isMerchant() && authService.isAuthenticated();
+  const { showInfo } = useToast();
+  const user = (() => {
+    try {
+      return authService.getCurrentUser();
+    } catch (error) {
+      console.warn('MerchantChatProvider: failed to read current user', error);
+      return null;
+    }
+  })();
+  const isMerchant =
+    !!user && authService.isAuthenticated() && authService.isMerchant();
 
   const [isOpen, setIsOpen] = useState(false);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -238,7 +246,7 @@ export const MerchantChatProvider: React.FC<{ children: React.ReactNode }> = ({ 
           )
         );
         if (!isOpen) {
-          showInfo(`New message from ${msg.senderName}`);
+          /* Toast handled by NotificationProvider via socket `notification` event */
         }
       }
     };
@@ -249,7 +257,6 @@ export const MerchantChatProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (prev.some((c) => c.id === conv.id)) return prev;
         return [conv, ...prev];
       });
-      showSuccess(`New winner chat: ${conv.otherPartyName}`);
     };
 
     const onTyping = (payload: { conversationId: string; userId: string; userName: string }) => {
@@ -284,8 +291,6 @@ export const MerchantChatProvider: React.FC<{ children: React.ReactNode }> = ({ 
     activeConversationId,
     isOpen,
     refreshConversations,
-    showInfo,
-    showSuccess,
     user?.id,
   ]);
 

@@ -54,6 +54,12 @@ export interface CreateUserPayload {
   isActive?: boolean;
 }
 
+export interface UpdateUserPayload {
+  role?: 'SUPER_ADMIN' | 'USER' | 'MERCHANT';
+  isActive?: boolean;
+  merchantVerified?: boolean;
+}
+
 export const adminService = {
   getDashboardStats: async (): Promise<DashboardStats> => {
     const response = await api.get<DashboardStatsResponse>('/admin/dashboard/stats');
@@ -82,7 +88,7 @@ export const adminService = {
     return response.data.data.user;
   },
 
-  updateUser: async (id: string, data: Partial<User>): Promise<User> => {
+  updateUser: async (id: string, data: UpdateUserPayload): Promise<User> => {
     const response = await api.put<UserResponse>(`/admin/users/${id}`, data);
     return response.data.data.user;
   },

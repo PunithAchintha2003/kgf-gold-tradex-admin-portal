@@ -1,0 +1,82 @@
+/* Sonner toast styling — vibrant rich colors aligned with KGF admin portal */
+.kgf-admin-toaster [data-sonner-toast] {
+  border-radius: 12px !important;
+  box-shadow:
+    0 10px 38px -10px rgba(0, 0, 0, 0.35),
+    0 8px 16px -8px rgba(0, 0, 0, 0.25) !important;
+  font-family: inherit;
+}
+
+.kgf-admin-toast-title {
+  font-weight: 700 !important;
+  font-size: 0.9375rem !important;
+}
+
+.kgf-admin-toast-description {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  opacity: 0.95 !important;
+}
+
+.kgf-admin-toast-description .kgf-toast-email {
+  font-weight: 700;
+  color: #b8860b;
+}
+
+[data-sonner-toaster][data-theme='dark'] .kgf-admin-toast-description .kgf-toast-email {
+  color: #f5d300;
+}
+
+/* Rich success — vivid green with gold accent border */
+[data-sonner-toaster] [data-sonner-toast][data-type='success'] {
+  border: 1px solid rgba(34, 197, 94, 0.45) !important;
+}
+
+[data-sonner-toaster][data-theme='dark'] [data-sonner-toast][data-type='success'] {
+  background: linear-gradient(135deg, #14532d 0%, #166534 100%) !important;
+  color: #ecfdf5 !important;
+  border-color: rgba(74, 222, 128, 0.4) !important;
+}
+
+[data-sonner-toaster][data-theme='light'] [data-sonner-toast][data-type='success'] {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
+  color: #14532d !important;
+  border-color: rgba(22, 163, 74, 0.35) !important;
+}
+
+/* Rich error */
+[data-sonner-toaster][data-theme='dark'] [data-sonner-toast][data-type='error'] {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
+  color: #fef2f2 !important;
+  border-color: rgba(248, 113, 113, 0.4) !important;
+}
+
+[data-sonner-toaster][data-theme='light'] [data-sonner-toast][data-type='error'] {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  color: #7f1d1d !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+}
+
+/* Rich info */
+[data-sonner-toaster][data-theme='dark'] [data-sonner-toast][data-type='info'] {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%) !important;
+  color: #eff6ff !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+}
+
+[data-sonner-toaster][data-theme='light'] [data-sonner-toast][data-type='info'] {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+  color: #1e3a8a !important;
+}
+
+/* Rich warning */
+[data-sonner-toaster][data-theme='dark'] [data-sonner-toast][data-type='warning'] {
+  background: linear-gradient(135deg, #78350f 0%, #92400e 100%) !important;
+  color: #fffbeb !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+}
+
+[data-sonner-toaster][data-theme='light'] [data-sonner-toast][data-type='warning'] {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  color: #78350f !important;
+}

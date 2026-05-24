@@ -43,6 +43,7 @@ import { authService } from '../services/authService';
 import { useTheme } from '../contexts/ThemeContext';
 import { applyGlassEffect } from '../theme/glassmorphism';
 import ThemeToggle from './ThemeToggle';
+import { NotificationBell } from './notifications/NotificationBell';
 import { MerchantChatLauncher } from './chat/MerchantChatLauncher';
 import { MerchantChatSidebar } from './chat/MerchantChatSidebar';
 
@@ -564,7 +565,8 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
             </Typography>
           </Box>
 
-          {/* Theme Toggle */}
+          {/* Notifications & theme */}
+          {authService.isAuthenticated() && <NotificationBell />}
           <ThemeToggle disableHoverAnimation sx={{ mr: { xs: 1, sm: 2 } }} />
 
           {/* User Menu */}
