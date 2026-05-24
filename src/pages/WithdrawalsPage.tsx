@@ -10,7 +10,6 @@ import {
   Chip,
   Button,
   CircularProgress,
-  Alert,
   Stack,
   IconButton,
   Tooltip,
@@ -24,12 +23,35 @@ import { CheckCircle, Cancel, Refresh, Search, AttachMoney, AccountBalance } fro
 import { useTheme as useMUITheme } from '@mui/material/styles';
 import { spotTradeAdminService, WalletTransaction } from '../services/spotTradeAdminService';
 import { GlassCard, GlassInput, GlassButton, GlassTable, GlassModal } from '../components/Glass';
+import { useNotifications } from '../contexts/NotificationContext';
+import { useToast } from '../contexts/ToastContext';
+
+function apiErrorDetail(e: unknown, fallback: string): string {
+  if (e && typeof e === 'object' && 'response' in e) {
+    const detail = (e as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+    if (typeof detail === 'string' && detail.trim()) return detail;
+  }
+  return fallback;
+}
+
+function withdrawalDecisionToast(detail: string): { title: string; description?: string } {
+  const match = detail.match(/Only pending withdrawals can be processed\. Current status: (\w+)/i);
+  if (match) {
+    const status = match[1].toLowerCase();
+    return {
+      title: 'Withdrawal already processed',
+      description: `This request is already ${status}. Refresh the list to see the latest status.`,
+    };
+  }
+  return { title: 'Could not process withdrawal', description: detail };
+}
 
 const WithdrawalsPage: React.FC = () => {
   const muiTheme = useMUITheme();
   const isDark = muiTheme.palette.mode === 'dark';
+  const { refreshPendingWithdrawals } = useNotifications();
+  const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<WalletTransaction[]>([]);
   const [selectedItem, setSelectedItem] = useState<WalletTransaction | null>(null);
@@ -38,12 +60,14 @@ const WithdrawalsPage: React.FC = () => {
 
   const fetchPending = async () => {
     setLoading(true);
-    setError('');
     try {
       const res = await spotTradeAdminService.getWalletTransactions(200, 0, 'PENDING', 'WITHDRAWAL');
       setItems(res.transactions);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Failed to load pending withdrawals');
+      await refreshPendingWithdrawals();
+    } catch (e: unknown) {
+      showError('Could not load withdrawals', {
+        description: apiErrorDetail(e, 'Failed to load pending withdrawals'),
+      });
     } finally {
       setLoading(false);
     }
@@ -55,9 +79,13 @@ const WithdrawalsPage: React.FC = () => {
       setApproveDialogOpen(false);
       setRejectDialogOpen(false);
       setSelectedItem(null);
+      showSuccess(approve ? 'Withdrawal approved' : 'Withdrawal rejected');
       await fetchPending();
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Failed to process request');
+    } catch (e: unknown) {
+      const { title, description } = withdrawalDecisionToast(
+        apiErrorDetail(e, 'Failed to process request')
+      );
+      showError(title, { description });
       setApproveDialogOpen(false);
       setRejectDialogOpen(false);
     }
@@ -132,21 +160,6 @@ const WithdrawalsPage: React.FC = () => {
           </Box>
         </Box>
       </GlassCard>
-
-      {error && (
-        <Alert
-          severity="error"
-          sx={{
-            mb: 2,
-            borderRadius: '12px',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-          }}
-          onClose={() => setError('')}
-        >
-          {error}
-        </Alert>
-      )}
 
       <GlassCard variant="elevated" glassHover={false}>
         <CardContent sx={{ p: 0 }}>

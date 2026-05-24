@@ -17,9 +17,13 @@ import { AppNotification, isAppNotification } from '../types/notification';
 const MAX_NOTIFICATIONS = 100;
 const STORAGE_PREFIX = 'kgf-admin-notifications';
 
+const WITHDRAWAL_POLL_MS = 30_000;
+
 interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
+  pendingWithdrawalCount: number;
+  refreshPendingWithdrawals: () => Promise<void>;
   markAsRead: (id: string) => void;
   markAllRead: () => void;
   clearAll: () => void;
@@ -70,6 +74,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<AppNotification[]>(() =>
     userId ? loadStored(userId) : []
   );
+  const [pendingWithdrawalCount, setPendingWithdrawalCount] = useState(0);
   const seenIdsRef = useRef<Set<string>>(new Set(notifications.map((n) => n.id)));
   const withdrawalBaselineRef = useRef<number | null>(null);
 
@@ -144,6 +149,43 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (userId) sessionStorage.removeItem(storageKey(userId));
   }, [userId]);
 
+  const refreshPendingWithdrawals = useCallback(async () => {
+    if (!isSuperAdmin || !isAuthenticated) {
+      setPendingWithdrawalCount(0);
+      withdrawalBaselineRef.current = null;
+      return;
+    }
+
+    try {
+      const res = await spotTradeAdminService.getWalletTransactions(200, 0, 'PENDING', 'WITHDRAWAL');
+      const count = res.transactions.length;
+      setPendingWithdrawalCount(count);
+
+      if (withdrawalBaselineRef.current === null) {
+        withdrawalBaselineRef.current = count;
+        return;
+      }
+
+      if (count > withdrawalBaselineRef.current) {
+        const diff = count - withdrawalBaselineRef.current;
+        pushNotification({
+          id: `withdrawal-pending-${Date.now()}`,
+          type: 'withdrawal_pending',
+          title: 'New withdrawal request',
+          message: `${diff} pending withdrawal${diff > 1 ? 's' : ''} need review.`,
+          severity: 'warning',
+          createdAt: new Date().toISOString(),
+          read: false,
+          link: '/withdrawals',
+        });
+      }
+
+      withdrawalBaselineRef.current = count;
+    } catch {
+      /* spot API may be offline — keep last known count */
+    }
+  }, [isSuperAdmin, isAuthenticated, pushNotification]);
+
   useEffect(() => {
     if (!userId) return;
     const stored = loadStored(userId);
@@ -163,6 +205,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const normalized = normalizeIncoming(payload);
       if (!normalized) return;
       pushNotification(normalized);
+      if (
+        isSuperAdmin &&
+        (normalized.type === 'withdrawal_pending' || normalized.link === '/withdrawals')
+      ) {
+        void refreshPendingWithdrawals();
+      }
     };
 
     socket.on('notification', onNotification);
@@ -170,52 +218,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       socket.off('notification', onNotification);
     };
-  }, [isAuthenticated, pushNotification]);
+  }, [isAuthenticated, isSuperAdmin, pushNotification, refreshPendingWithdrawals]);
 
   useEffect(() => {
-    if (!isSuperAdmin || !isAuthenticated) return;
+    if (!isSuperAdmin || !isAuthenticated) {
+      setPendingWithdrawalCount(0);
+      withdrawalBaselineRef.current = null;
+      return;
+    }
 
-    let cancelled = false;
-
-    const pollWithdrawals = async () => {
-      try {
-        const res = await spotTradeAdminService.getWalletTransactions(200, 0, 'PENDING', 'WITHDRAWAL');
-        const count = res.transactions.length;
-        if (withdrawalBaselineRef.current === null) {
-          withdrawalBaselineRef.current = count;
-          return;
-        }
-        if (cancelled) return;
-        if (count > withdrawalBaselineRef.current) {
-          const diff = count - withdrawalBaselineRef.current;
-          pushNotification({
-            id: `withdrawal-pending-${Date.now()}`,
-            type: 'withdrawal_pending',
-            title: 'New withdrawal request',
-            message: `${diff} pending withdrawal${diff > 1 ? 's' : ''} need review.`,
-            severity: 'warning',
-            createdAt: new Date().toISOString(),
-            read: false,
-            link: '/withdrawals',
-          });
-        }
-        withdrawalBaselineRef.current = count;
-      } catch {
-        /* spot API may be offline */
-      }
-    };
-
-    void pollWithdrawals();
-    const interval = window.setInterval(() => void pollWithdrawals(), 45000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [isSuperAdmin, isAuthenticated, pushNotification]);
+    void refreshPendingWithdrawals();
+    const interval = window.setInterval(() => void refreshPendingWithdrawals(), WITHDRAWAL_POLL_MS);
+    return () => window.clearInterval(interval);
+  }, [isSuperAdmin, isAuthenticated, refreshPendingWithdrawals]);
 
   const value: NotificationContextType = {
     notifications,
     unreadCount,
+    pendingWithdrawalCount,
+    refreshPendingWithdrawals,
     markAsRead,
     markAllRead,
     clearAll,

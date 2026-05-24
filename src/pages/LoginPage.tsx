@@ -29,12 +29,21 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { authService, ApiRequestError } from '../services/authService';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../contexts/ToastContext';
+import {
+  LoginOtpVerificationStep,
+  getPendingLoginSession,
+  clearPendingLoginSession,
+} from '../components/auth/LoginOtpVerificationStep';
 import { GlassCard, GlassButton, GlassInput } from '../components/Glass';
 import ThemeToggle from '../components/ThemeToggle';
+
+type LoginStep = 'form' | 'verify-login';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { mode } = useTheme();
+  const { showSuccess } = useToast();
   const formTitleId = useId();
   const formDescriptionId = useId();
   const rememberId = useId();
@@ -45,6 +54,9 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
+  const [step, setStep] = useState<LoginStep>('form');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [loginSessionToken, setLoginSessionToken] = useState('');
 
   useEffect(() => {
     try {
@@ -55,6 +67,13 @@ const LoginPage: React.FC = () => {
       }
     } catch {
       /* private mode / blocked storage */
+    }
+
+    const pendingLogin = getPendingLoginSession();
+    if (pendingLogin) {
+      setPendingEmail(pendingLogin.email);
+      setLoginSessionToken(pendingLogin.loginSessionToken);
+      setStep('verify-login');
     }
   }, []);
 
@@ -93,11 +112,13 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      if (data.requiresLoginOtp) {
-        setError(
-          'This portal is only for administrators and merchants. Please use the customer site to complete sign-in.'
-        );
-        setShake(true);
+      if (data.requiresLoginOtp && data.loginSessionToken && data.email) {
+        setPendingEmail(data.email);
+        setLoginSessionToken(data.loginSessionToken);
+        setStep('verify-login');
+        showSuccess('Check your email', {
+          description: `We sent a 6-digit sign-in code to ${data.email}.`,
+        });
         return;
       }
 
@@ -135,6 +156,22 @@ const LoginPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoginOtpVerified = (role: 'SUPER_ADMIN' | 'MERCHANT') => {
+    if (role === 'SUPER_ADMIN') {
+      navigate('/dashboard');
+      return;
+    }
+    navigate('/merchant');
+  };
+
+  const handleBackToForm = () => {
+    clearPendingLoginSession();
+    setStep('form');
+    setPendingEmail('');
+    setLoginSessionToken('');
+    setError('');
   };
 
   const muted = mode === 'dark' ? '#cccccc' : '#5F6368';
@@ -234,8 +271,8 @@ const LoginPage: React.FC = () => {
                 fontWeight: 500,
               }}
             >
-              Secure sign-in for administrators and verified merchants — one gateway, role-aware routing after
-              authentication.
+              Secure sign-in for administrators and verified merchants — email and password, then a 6-digit
+              verification code to complete access.
             </Typography>
           </Box>
 
@@ -246,7 +283,7 @@ const LoginPage: React.FC = () => {
             {[
               'Administrators: manage users, money movement, and operational controls',
               'Merchants: manage your product catalog, inventory, and publishing status',
-              'Every session is authenticated against the same secure API with audited access patterns',
+              'Two-step sign-in: credentials first, then a one-time code sent to your work email',
             ].map((text) => (
               <ListItem key={text} disableGutters sx={{ py: 0.5, alignItems: 'flex-start' }}>
                 <ListItemIcon sx={{ minWidth: 36, mt: 0.25 }}>
@@ -347,6 +384,15 @@ const LoginPage: React.FC = () => {
           }}
         >
           <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            {step === 'verify-login' ? (
+              <LoginOtpVerificationStep
+                email={pendingEmail}
+                loginSessionToken={loginSessionToken}
+                onVerified={handleLoginOtpVerified}
+                onBack={handleBackToForm}
+                onSessionTokenChange={setLoginSessionToken}
+              />
+            ) : (
             <Stack spacing={2.5}>
               <Box>
                 <Typography
@@ -372,7 +418,7 @@ const LoginPage: React.FC = () => {
                     lineHeight: 1.6,
                   }}
                 >
-                  Enter the email and password issued to your administrator or merchant account.
+                  Enter your email and password. We will send a 6-digit code to your inbox to complete sign-in.
                 </Typography>
               </Box>
 
@@ -577,6 +623,7 @@ const LoginPage: React.FC = () => {
                 © {new Date().getFullYear()} KGF Gold TradeX. All rights reserved.
               </Typography>
             </Stack>
+            )}
           </CardContent>
         </GlassCard>
       </Box>

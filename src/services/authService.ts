@@ -25,6 +25,7 @@ export interface User {
   address: string;
   role: 'SUPER_ADMIN' | 'USER' | 'MERCHANT';
   merchantVerified?: boolean;
+  emailVerified?: boolean;
   isActive?: boolean;
   lastLogin?: string;
   createdAt: string;
@@ -45,6 +46,12 @@ export interface AuthResponse {
   };
 }
 
+export interface VerifyLoginData {
+  email: string;
+  code: string;
+  loginSessionToken: string;
+}
+
 export const authService = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     try {
@@ -56,11 +63,48 @@ export const authService = {
           localStorage.setItem('refreshToken', payload.refreshToken);
         }
         localStorage.setItem('user', JSON.stringify(payload.user));
-      } else {
+      } else if (!payload.requiresLoginOtp) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
       }
+      return response.data;
+    } catch (error) {
+      throwApiError(error);
+    }
+  },
+
+  verifyLogin: async (data: VerifyLoginData): Promise<AuthResponse> => {
+    try {
+      const response = await api.post<AuthResponse>('/auth/verify-login', data);
+      const payload = response.data?.data ?? {};
+      if (response.data?.success && payload.accessToken && payload.user) {
+        localStorage.setItem('accessToken', payload.accessToken);
+        if (payload.refreshToken) {
+          localStorage.setItem('refreshToken', payload.refreshToken);
+        }
+        localStorage.setItem('user', JSON.stringify(payload.user));
+      }
+      return response.data;
+    } catch (error) {
+      throwApiError(error);
+    }
+  },
+
+  resendLoginCode: async (data: {
+    email: string;
+    loginSessionToken: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data?: { email: string; loginSessionToken: string };
+  }> => {
+    try {
+      const response = await api.post<{
+        success: boolean;
+        message: string;
+        data?: { email: string; loginSessionToken: string };
+      }>('/auth/resend-login-code', data);
       return response.data;
     } catch (error) {
       throwApiError(error);
@@ -83,6 +127,10 @@ export const authService = {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+  },
+
+  updateStoredUser: (user: User): void => {
+    localStorage.setItem('user', JSON.stringify(user));
   },
 
   getCurrentUser: (): User | null => {

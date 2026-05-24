@@ -25,18 +25,33 @@ import {
   PendingActions,
   Storefront,
   Verified,
+  AccountBalanceWallet,
+  Today,
+  CalendarMonth,
 } from '@mui/icons-material';
 import { adminService, DashboardStats } from '../services/adminService';
+import { spotTradeAdminService, AdminIncomeSummary } from '../services/spotTradeAdminService';
+import { DownloadBackupButton } from '../components/admin/DownloadBackupButton';
 // GlassCard not used — stat tiles and section containers use direct Box with frontend-matching styles
 
 interface StatCardProps {
   title: string;
-  value: number;
+  value: number | string;
   icon: React.ReactNode;
   color: string;
   trend?: { value: number; isPositive: boolean };
   loading?: boolean;
+  subtitle?: string;
 }
+
+const formatLkr = (amount: number, currency = 'LKR'): string => {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  const fractionDigits = Math.abs(safe) >= 1000 ? 0 : 2;
+  return `${currency} ${safe.toLocaleString('en-LK', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })}`;
+};
 
 // Convert hex color to rgb components for rgba() usage
 const hexToRgb = (hex: string): string => {
@@ -45,7 +60,7 @@ const hexToRgb = (hex: string): string => {
   return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
 };
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend, loading }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend, loading, subtitle }) => {
   const muiTheme = useMUITheme();
   const isDark = muiTheme.palette.mode === 'dark';
   const rgb = hexToRgb(color);
@@ -103,18 +118,35 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend, l
         <Typography
           sx={{
             fontWeight: 700,
-            fontSize: '2rem',
-            lineHeight: 1,
-            mb: 1.5,
+            fontSize: typeof value === 'string' && value.length > 12 ? '1.5rem' : '2rem',
+            lineHeight: 1.1,
+            mb: subtitle ? 0.75 : 1.5,
             color,
+            wordBreak: 'break-word',
           }}
         >
           {loading ? (
             <CircularProgress size={32} sx={{ color }} />
-          ) : (
+          ) : typeof value === 'number' ? (
             value.toLocaleString()
+          ) : (
+            value
           )}
         </Typography>
+
+        {subtitle && !loading && (
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              color: isDark ? '#9ca3af' : '#6b7280',
+              fontSize: '0.75rem',
+              mb: 1.25,
+            }}
+          >
+            {subtitle}
+          </Typography>
+        )}
 
         {/* Trend badge */}
         {trend && (
@@ -157,6 +189,8 @@ const DashboardPage: React.FC = () => {
   const muiTheme = useMUITheme();
   const isDark = muiTheme.palette.mode === 'dark';
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [income, setIncome] = useState<AdminIncomeSummary | null>(null);
+  const [incomeError, setIncomeError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -164,12 +198,32 @@ const DashboardPage: React.FC = () => {
   const fetchStats = async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
-      const data = await adminService.getDashboardStats();
-      setStats(data);
-      setError(null);
-    } catch (err: any) {
-      console.error('Failed to fetch stats:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to load dashboard statistics');
+
+      const [statsResult, incomeResult] = await Promise.allSettled([
+        adminService.getDashboardStats(),
+        spotTradeAdminService.getIncomeSummary(),
+      ]);
+
+      if (statsResult.status === 'fulfilled') {
+        setStats(statsResult.value);
+        setError(null);
+      } else {
+        const err = statsResult.reason;
+        console.error('Failed to fetch stats:', err);
+        setError(err?.response?.data?.error || err?.message || 'Failed to load dashboard statistics');
+      }
+
+      if (incomeResult.status === 'fulfilled') {
+        setIncome(incomeResult.value);
+        setIncomeError(null);
+      } else {
+        const err = incomeResult.reason;
+        console.error('Failed to fetch income:', err);
+        setIncome(null);
+        setIncomeError(
+          err?.response?.data?.detail || err?.message || 'Income service is unavailable'
+        );
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -327,26 +381,28 @@ const DashboardPage: React.FC = () => {
             Welcome back! Here's what's happening today.
           </Typography>
         </Box>
-        <Tooltip title="Refresh data">
-          <IconButton
-            onClick={() => fetchStats(true)}
-            disabled={refreshing}
-            sx={{
-              background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-              border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-              '&:hover': {
-                background: isDark ? 'rgba(245, 211, 0, 0.1)' : 'rgba(230, 194, 0, 0.1)',
-                transform: 'rotate(180deg)',
-              },
-              transition: 'all 300ms cubic-bezier(0.4, 0.0, 0.2, 1)',
-            }}
-          >
-            <Refresh />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DownloadBackupButton disabled={refreshing} />
+          <Tooltip title="Refresh data">
+            <IconButton
+              onClick={() => fetchStats(true)}
+              disabled={refreshing}
+              sx={{
+                background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
+                '&:hover': {
+                  background: isDark ? 'rgba(245, 211, 0, 0.1)' : 'rgba(230, 194, 0, 0.1)',
+                  transform: 'rotate(180deg)',
+                },
+                transition: 'all 300ms cubic-bezier(0.4, 0.0, 0.2, 1)',
+              }}
+            >
+              <Refresh />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
-      {/* Refreshing Progress */}
       {refreshing && (
         <LinearProgress
           sx={{
@@ -365,6 +421,89 @@ const DashboardPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Revenue / Income Section */}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              color: isDark ? '#F5D300' : '#E6C200',
+            }}
+          >
+            Revenue (super admin)
+          </Typography>
+          <Typography variant="caption" sx={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
+            {incomeError
+              ? incomeError
+              : income?.last_revenue_at
+                ? `Last revenue: ${new Date(income.last_revenue_at).toLocaleString('en-LK', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}`
+                : 'No revenue recorded yet'}
+          </Typography>
+        </Box>
+
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <StatCard
+              title="Total income"
+              value={income ? formatLkr(income.total, income.currency) : 'LKR 0'}
+              icon={<AccountBalanceWallet />}
+              color="#F5D300"
+              subtitle={
+                income
+                  ? `Trade fees ${formatLkr(income.trade_fees.total, income.currency)} · Wallet fees ${formatLkr(income.wallet_fees.total, income.currency)}`
+                  : 'Income service offline'
+              }
+              loading={refreshing}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <StatCard
+              title="Income today"
+              value={income ? formatLkr(income.today, income.currency) : 'LKR 0'}
+              icon={<Today />}
+              color="#10b981"
+              subtitle={
+                income
+                  ? `Trades ${formatLkr(income.trade_fees.today, income.currency)} · Wallet ${formatLkr(income.wallet_fees.today, income.currency)}`
+                  : undefined
+              }
+              loading={refreshing}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <StatCard
+              title="Income this month"
+              value={income ? formatLkr(income.this_month, income.currency) : 'LKR 0'}
+              icon={<CalendarMonth />}
+              color="#26d4b4"
+              subtitle={
+                income
+                  ? `Trades ${formatLkr(income.trade_fees.this_month, income.currency)} · Wallet ${formatLkr(income.wallet_fees.this_month, income.currency)}`
+                  : undefined
+              }
+              loading={refreshing}
+            />
+          </Grid>
+        </Grid>
+      </Box>
+
+      <Typography
+        variant="h6"
+        sx={{
+          fontWeight: 700,
+          mb: 2,
+          color: isDark ? '#F5D300' : '#E6C200',
+        }}
+      >
+        Users & merchants
+      </Typography>
 
       {/* Stats Grid */}
       <Grid container spacing={3}>
