@@ -120,18 +120,21 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
     if (!selectedUser) return;
     const userId = selectedUser.id || (selectedUser as User & { _id?: string })._id;
     if (!userId) {
-      setError('User ID is missing. Cannot update user.');
-      return;
+      throw new Error('User ID is missing. Cannot update user.');
     }
-    try {
-      await adminService.updateUser(userId, updatedUser);
-      setEditDialogOpen(false);
-      setSelectedUser(null);
-      setError('');
-      void fetchUsers();
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to update user');
-    }
+
+    const merchantRole = isMerchants ? 'MERCHANT' : updatedUser.role;
+    const payload = {
+      role: merchantRole,
+      isActive: updatedUser.isActive,
+      ...(merchantRole === 'MERCHANT' ? { merchantVerified: updatedUser.merchantVerified } : {}),
+    };
+
+    await adminService.updateUser(userId, payload);
+    setEditDialogOpen(false);
+    setSelectedUser(null);
+    setError('');
+    void fetchUsers();
   };
 
   const muiTheme = useMUITheme();
@@ -465,6 +468,7 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
       <UserEditDialog
         open={editDialogOpen}
         user={selectedUser}
+        merchantDirectory={isMerchants}
         onClose={() => {
           setEditDialogOpen(false);
           setSelectedUser(null);

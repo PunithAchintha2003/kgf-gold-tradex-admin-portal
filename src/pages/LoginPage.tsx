@@ -27,7 +27,7 @@ import {
   CheckCircleOutline,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../services/authService';
+import { authService, ApiRequestError } from '../services/authService';
 import { useTheme } from '../contexts/ThemeContext';
 import { GlassCard, GlassButton, GlassInput } from '../components/Glass';
 import ThemeToggle from '../components/ThemeToggle';
@@ -77,13 +77,38 @@ const LoginPage: React.FC = () => {
     try {
       const response = await authService.login({ email, password });
 
-      if (!response.success) {
-        setError('Login failed. Please try again.');
+      if (!response?.success) {
+        setError(response?.message || 'Login failed. Please try again.');
         setShake(true);
         return;
       }
 
-      const role = response.data.user.role;
+      const data = response.data ?? {};
+
+      if (data.requiresEmailVerification) {
+        setError(
+          'Please verify your email before signing in. Check your inbox for the 6-digit code, then try again.'
+        );
+        setShake(true);
+        return;
+      }
+
+      if (data.requiresLoginOtp) {
+        setError(
+          'This portal is only for administrators and merchants. Please use the customer site to complete sign-in.'
+        );
+        setShake(true);
+        return;
+      }
+
+      const role = data.user?.role;
+      if (!role) {
+        setError('Login response was invalid. Please try again.');
+        setShake(true);
+        await authService.logout();
+        return;
+      }
+
       if (role === 'SUPER_ADMIN') {
         navigate('/dashboard');
         return;
@@ -93,11 +118,19 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      setError('This portal is only for administrators and merchants. Please use the customer site for standard accounts.');
+      setError(
+        'This portal is only for administrators and merchants. Please use the customer site for standard accounts.'
+      );
       setShake(true);
       await authService.logout();
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Login failed. Please check your credentials.');
+    } catch (err) {
+      const message =
+        err instanceof ApiRequestError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Login failed. Please check your credentials.';
+      setError(message);
       setShake(true);
     } finally {
       setLoading(false);
@@ -469,12 +502,13 @@ const LoginPage: React.FC = () => {
                         },
                       }}
                     />
-                    <Tooltip title="Password resets are handled by your platform administrator.">
+                    <Tooltip title="Reset your password via email verification.">
                       <span>
                         <Button
                           type="button"
                           variant="text"
                           size="small"
+                          onClick={() => navigate('/forgot-password')}
                           sx={{
                             minHeight: 44,
                             px: 1,

@@ -9,14 +9,19 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+const AUTH_PUBLIC_PATHS = ['/login', '/forgot-password'];
+
+const isPublicAuthPath = () => {
+  if (typeof window === 'undefined') return false;
+  return AUTH_PUBLIC_PATHS.some((p) => window.location.pathname.startsWith(p));
+};
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
+    if (token && token !== 'undefined' && token !== 'null') {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Let the browser set multipart boundaries for FormData uploads
     if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
       const headers = config.headers;
       if (headers && typeof headers.delete === 'function') {
@@ -25,21 +30,19 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (!isPublicAuthPath()) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
