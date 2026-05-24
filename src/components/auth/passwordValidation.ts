@@ -15,6 +15,26 @@ export function isPasswordValid(password: string): boolean {
   return NEW_PASSWORD_RULES.every((rule) => rule.test(password));
 }
 
+export function validatePasswordChangeForm(fields: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}): string | null {
+  if (!fields.currentPassword.trim()) {
+    return 'Enter your current password.';
+  }
+  if (!isPasswordValid(fields.newPassword)) {
+    return 'New password does not meet all requirements.';
+  }
+  if (fields.newPassword === fields.currentPassword) {
+    return 'New password must be different from your current password.';
+  }
+  if (fields.newPassword !== fields.confirmPassword) {
+    return 'Passwords do not match.';
+  }
+  return null;
+}
+
 export function getPasswordStrength(password: string): { label: string; score: number } {
   if (!password) return { label: 'No password entered', score: 0 };
 

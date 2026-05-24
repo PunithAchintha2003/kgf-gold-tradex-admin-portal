@@ -46,6 +46,7 @@ import ThemeToggle from './ThemeToggle';
 import { NotificationBell } from './notifications/NotificationBell';
 import { MerchantChatLauncher } from './chat/MerchantChatLauncher';
 import { MerchantChatSidebar } from './chat/MerchantChatSidebar';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const drawerWidth = 260;
 const collapsedDrawerWidth = 72;
@@ -66,6 +67,14 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const glassEffect = applyGlassEffect(mode, 'elevated');
+  const { pendingWithdrawalCount } = useNotifications();
+
+  const getMenuItemBadge = (path: string, staticBadge: number | null) => {
+    if (path === '/withdrawals' && pendingWithdrawalCount > 0) {
+      return pendingWithdrawalCount;
+    }
+    return staticBadge;
+  };
 
   const handleLogout = async () => {
     handleMenuClose();
@@ -84,7 +93,7 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
 
   const adminMenuItems = [
     { text: 'Transactions', icon: <ReceiptLong />, path: '/transactions', badge: null },
-    { text: 'Withdrawals', icon: <PendingActions />, path: '/withdrawals', badge: 3 },
+    { text: 'Withdrawals', icon: <PendingActions />, path: '/withdrawals', badge: null },
   ];
 
   const merchantMenuItems = [
@@ -96,8 +105,12 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
   ];
 
   const menuItems = variant === 'merchant' ? merchantMenuItems : adminMenuItems;
+  const profilePath = variant === 'merchant' ? '/merchant/profile' : '/profile';
+  const settingsPath = variant === 'merchant' ? '/merchant/settings' : '/settings';
 
   const getPageTitle = () => {
+    if (location.pathname === profilePath) return 'Profile';
+    if (location.pathname === settingsPath) return 'Settings';
     if (variant === 'merchant') {
       const currentItem = menuItems.find((item) => item.path === location.pathname);
       return currentItem?.text || 'Dashboard';
@@ -107,6 +120,16 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
     if (location.pathname === '/merchants') return 'Merchants';
     const currentItem = adminMenuItems.find((item) => item.path === location.pathname);
     return currentItem?.text || 'Dashboard';
+  };
+
+  const handleProfileClick = () => {
+    handleMenuClose();
+    navigate(profilePath);
+  };
+
+  const handleSettingsClick = () => {
+    handleMenuClose();
+    navigate(settingsPath);
   };
 
   const handleMobileMenuItemClick = (path: string) => {
@@ -242,13 +265,16 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
                             : '#666',
                     }}
                   >
-                    {item.badge ? (
-                      <Badge badgeContent={item.badge} color="error">
-                        {item.icon}
-                      </Badge>
-                    ) : (
-                      item.icon
-                    )}
+                    {(() => {
+                      const badge = getMenuItemBadge(item.path, item.badge);
+                      return badge ? (
+                        <Badge badgeContent={badge} color="error" max={99}>
+                          {item.icon}
+                        </Badge>
+                      ) : (
+                        item.icon
+                      );
+                    })()}
                   </ListItemIcon>
                   {(!sidebarCollapsed || isMobile) && (
                     <ListItemText
@@ -470,13 +496,16 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
                               : '#666',
                       }}
                     >
-                      {item.badge ? (
-                        <Badge badgeContent={item.badge} color="error">
-                          {item.icon}
-                        </Badge>
-                      ) : (
-                        item.icon
-                      )}
+                      {(() => {
+                        const badge = getMenuItemBadge(item.path, item.badge);
+                        return badge ? (
+                          <Badge badgeContent={badge} color="error" max={99}>
+                            {item.icon}
+                          </Badge>
+                        ) : (
+                          item.icon
+                        );
+                      })()}
                     </ListItemIcon>
                     {(!sidebarCollapsed || isMobile) && (
                       <ListItemText
@@ -645,7 +674,7 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
               }}
             >
               <MenuItem
-                onClick={handleMenuClose}
+                onClick={handleProfileClick}
                 sx={{
                   borderRadius: '8px',
                   m: 0.5,
@@ -656,7 +685,7 @@ const Layout: React.FC<LayoutProps> = ({ children, variant = 'admin' }) => {
                 Profile
               </MenuItem>
               <MenuItem
-                onClick={handleMenuClose}
+                onClick={handleSettingsClick}
                 sx={{
                   borderRadius: '8px',
                   m: 0.5,

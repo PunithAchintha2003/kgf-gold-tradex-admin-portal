@@ -58,6 +58,10 @@ export interface SpotTrade {
   status: string;
   created_at: string;
   updated_at: string;
+  /** Super-admin review flag — only returned from admin spot-trades API */
+  admin_seen?: boolean;
+  admin_seen_at?: string | null;
+  admin_seen_by?: string | null;
 }
 
 export const spotTradeAdminService = {
@@ -75,4 +79,28 @@ export const spotTradeAdminService = {
     const response = await spotApi.post(`/spot-trade/admin/withdrawals/${transactionId}/decision`, { approve, notes });
     return response.data as WalletTransaction;
   },
+  async markSpotTradeSeen(tradeId: number): Promise<SpotTrade> {
+    const response = await spotApi.post(`/spot-trade/admin/spot-trades/${tradeId}/seen`);
+    return response.data as SpotTrade;
+  },
+  async getIncomeSummary(): Promise<AdminIncomeSummary> {
+    const response = await spotApi.get('/spot-trade/admin/income/summary');
+    return response.data as AdminIncomeSummary;
+  },
 };
+
+export interface AdminRevenueBreakdown {
+  total: number;
+  today: number;
+  this_month: number;
+}
+
+export interface AdminIncomeSummary {
+  currency: string;
+  total: number;
+  today: number;
+  this_month: number;
+  trade_fees: AdminRevenueBreakdown;
+  wallet_fees: AdminRevenueBreakdown;
+  last_revenue_at: string | null;
+}

@@ -10,20 +10,16 @@ import {
   TablePagination,
   IconButton,
   Chip,
-  Button,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   CircularProgress,
   Alert,
   InputAdornment,
   Tooltip,
   Avatar,
 } from '@mui/material';
-import { Edit, Delete, Search, Refresh, PersonAdd, MoreVert } from '@mui/icons-material';
+import { Edit, Search, Refresh, PersonAdd } from '@mui/icons-material';
 import { useTheme as useMUITheme } from '@mui/material/styles';
 import { adminService, User } from '../services/adminService';
-import { GlassCard, GlassInput, GlassModal, GlassTable, GlassButton } from '../components/Glass';
+import { GlassCard, GlassInput, GlassTable, GlassButton } from '../components/Glass';
 import { UserEditDialog } from '../components/UserEditDialog';
 import { CreateUserDialog } from '../components/CreateUserDialog';
 
@@ -45,7 +41,6 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState('');
 
   const fetchUsers = useCallback(async () => {
@@ -91,31 +86,6 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
     setEditDialogOpen(true);
   };
 
-  const handleDelete = (user: User) => {
-    setSelectedUser(user);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedUser) return;
-    const userId = selectedUser.id || (selectedUser as User & { _id?: string })._id;
-    if (!userId) {
-      setError('User ID is missing. Cannot delete user.');
-      setDeleteDialogOpen(false);
-      return;
-    }
-    try {
-      await adminService.deleteUser(userId);
-      setDeleteDialogOpen(false);
-      setSelectedUser(null);
-      setError('');
-      void fetchUsers();
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to delete user');
-      setDeleteDialogOpen(false);
-    }
-  };
-
   const handleEditSave = async (updatedUser: User) => {
     if (!selectedUser) return;
     const userId = selectedUser.id || (selectedUser as User & { _id?: string })._id;
@@ -147,8 +117,6 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
   const searchPlaceholder = isMerchants ? 'Search merchants…' : 'Search users…';
   const addLabel = isMerchants ? 'Add merchant' : 'Add user';
   const emptyMessage = isMerchants ? 'No merchants found' : 'No users found';
-  const deleteDialogTitle = isMerchants ? 'Delete merchant' : 'Delete user';
-
   return (
     <Box>
       <GlassCard variant="subtle" glassHover={false} sx={{ mb: 3, p: 3 }}>
@@ -411,7 +379,7 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
                           </Typography>
                         </TableCell>
                         <TableCell align="right">
-                          <Tooltip title="Edit user">
+                          <Tooltip title={isMerchants ? 'Edit merchant' : 'Edit user'}>
                             <IconButton
                               size="small"
                               onClick={() => handleEdit(user)}
@@ -423,20 +391,6 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
                               }}
                             >
                               <Edit fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete user">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDelete(user)}
-                              sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="More options">
-                            <IconButton size="small">
-                              <MoreVert fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </TableCell>
@@ -486,39 +440,6 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
         forcedRole={isMerchants ? 'MERCHANT' : undefined}
       />
 
-      <GlassModal open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle
-          sx={{
-            borderBottom: isDark ? '1px solid rgba(245, 211, 0, 0.1)' : '1px solid rgba(230, 194, 0, 0.1)',
-          }}
-        >
-          {deleteDialogTitle}
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Typography>
-            Are you sure you want to delete {isMerchants ? 'merchant' : 'user'} &quot;{selectedUser?.name}&quot;? This
-            action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={() => setDeleteDialogOpen(false)} sx={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void handleDeleteConfirm()}
-            variant="contained"
-            sx={{
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              color: '#FFF',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)',
-              },
-            }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </GlassModal>
     </Box>
   );
 };

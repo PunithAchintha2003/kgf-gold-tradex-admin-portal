@@ -9,14 +9,33 @@ import {
   Typography,
   useTheme as useMUITheme,
 } from '@mui/material';
-import { Inventory2, PublishedWithChanges, EditNote, Verified, Payments, ShoppingCart } from '@mui/icons-material';
+import {
+  Inventory2,
+  PublishedWithChanges,
+  EditNote,
+  Verified,
+  ShoppingCart,
+  AccountBalanceWallet,
+  Today,
+  CalendarMonth,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { merchantService, MerchantDashboardStats } from '../../services/merchantService';
+import { DownloadBackupButton } from '../../components/admin/DownloadBackupButton';
 
 const hexToRgb = (hex: string): string => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return '255, 255, 255';
   return `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`;
+};
+
+const formatLkr = (amount: number): string => {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  const fractionDigits = Math.abs(safe) >= 1000 ? 0 : 2;
+  return `LKR ${safe.toLocaleString('en-LK', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })}`;
 };
 
 interface StatTileProps {
@@ -25,9 +44,10 @@ interface StatTileProps {
   icon: React.ReactNode;
   color: string;
   loading?: boolean;
+  subtitle?: string;
 }
 
-const StatTile: React.FC<StatTileProps> = ({ title, value, icon, color, loading }) => {
+const StatTile: React.FC<StatTileProps> = ({ title, value, icon, color, loading, subtitle }) => {
   const muiTheme = useMUITheme();
   const isDark = muiTheme.palette.mode === 'dark';
   const rgb = hexToRgb(color);
@@ -76,9 +96,30 @@ const StatTile: React.FC<StatTileProps> = ({ title, value, icon, color, loading 
           {React.cloneElement(icon as React.ReactElement, { sx: { fontSize: 20 } })}
         </Box>
       </Box>
-      <Typography sx={{ fontWeight: 700, fontSize: '2rem', lineHeight: 1, color }}>
+      <Typography
+        sx={{
+          fontWeight: 700,
+          fontSize: typeof value === 'string' && value.length > 12 ? '1.5rem' : '2rem',
+          lineHeight: 1.1,
+          color,
+          wordBreak: 'break-word',
+        }}
+      >
         {loading ? <CircularProgress size={32} sx={{ color }} /> : value}
       </Typography>
+      {subtitle && !loading && (
+        <Typography
+          variant="caption"
+          sx={{
+            display: 'block',
+            mt: 0.75,
+            color: isDark ? '#9ca3af' : '#6b7280',
+            fontSize: '0.75rem',
+          }}
+        >
+          {subtitle}
+        </Typography>
+      )}
     </Box>
   );
 };
@@ -158,28 +199,30 @@ const MerchantDashboardPage: React.FC = () => {
             Merchant overview
           </Typography>
           <Typography variant="body2" sx={{ color: isDark ? '#cccccc' : '#666', maxWidth: 720 }}>
-            A focused workspace for catalog health, inventory, and publishing — structured for quick scanning and
-            predictable next steps.
+            Welcome back! Here&apos;s what&apos;s happening today — sales, catalog, and inventory at a glance.
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          onClick={() => void load(true)}
-          disabled={refreshing}
-          sx={{
-            borderRadius: '10px',
-            textTransform: 'none',
-            fontWeight: 600,
-            borderColor: isDark ? 'rgba(245, 211, 0, 0.35)' : 'rgba(230, 194, 0, 0.45)',
-            color: isDark ? '#F5D300' : '#B8860B',
-            '&:hover': {
-              borderColor: isDark ? 'rgba(245, 211, 0, 0.55)' : 'rgba(230, 194, 0, 0.65)',
-              background: isDark ? 'rgba(245, 211, 0, 0.06)' : 'rgba(230, 194, 0, 0.06)',
-            },
-          }}
-        >
-          Refresh
-        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <DownloadBackupButton scope="merchant" disabled={refreshing} />
+          <Button
+            variant="outlined"
+            onClick={() => void load(true)}
+            disabled={refreshing}
+            sx={{
+              borderRadius: '10px',
+              textTransform: 'none',
+              fontWeight: 600,
+              borderColor: isDark ? 'rgba(245, 211, 0, 0.35)' : 'rgba(230, 194, 0, 0.45)',
+              color: isDark ? '#F5D300' : '#B8860B',
+              '&:hover': {
+                borderColor: isDark ? 'rgba(245, 211, 0, 0.55)' : 'rgba(230, 194, 0, 0.65)',
+                background: isDark ? 'rgba(245, 211, 0, 0.06)' : 'rgba(230, 194, 0, 0.06)',
+              },
+            }}
+          >
+            Refresh
+          </Button>
+        </Box>
       </Box>
 
       {refreshing && (
@@ -225,16 +268,83 @@ const MerchantDashboardPage: React.FC = () => {
         </Alert>
       )}
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatTile
-            title="Total SKUs"
-            value={stats.totalProducts}
-            icon={<Inventory2 />}
-            color="#F5D300"
-            loading={refreshing}
-          />
+      {/* Revenue / income */}
+      <Box sx={{ mb: 4 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            mb: 2,
+            flexWrap: 'wrap',
+            gap: 1,
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700, color: isDark ? '#F5D300' : '#E6C200' }}>
+            Your income
+          </Typography>
+          <Typography variant="caption" sx={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
+            {stats.lastActivityAt || stats.lastOrderAt
+              ? `Last activity: ${new Date(stats.lastActivityAt || stats.lastOrderAt!).toLocaleString('en-LK', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}`
+              : 'No shop orders or auction wins yet'}
+          </Typography>
+        </Box>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <StatTile
+              title="Total income"
+              value={formatLkr(stats.totalIncomeLkr)}
+              icon={<AccountBalanceWallet />}
+              color="#F5D300"
+              subtitle={
+                stats.shopIncome && stats.auctionIncome
+                  ? `Shop ${formatLkr(stats.shopIncome.total)} · Auctions ${formatLkr(stats.auctionIncome.total)} · ${stats.totalOrderCount} order${stats.totalOrderCount === 1 ? '' : 's'}, ${stats.auctionIncome.wonCount} auction win${stats.auctionIncome.wonCount === 1 ? '' : 's'}`
+                  : `${stats.totalOrderCount} order${stats.totalOrderCount === 1 ? '' : 's'} all time`
+              }
+              loading={refreshing}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <StatTile
+              title="Income today"
+              value={formatLkr(stats.incomeTodayLkr ?? 0)}
+              icon={<Today />}
+              color="#10b981"
+              subtitle={
+                stats.shopIncome && stats.auctionIncome
+                  ? `Shop ${formatLkr(stats.shopIncome.today)} · Auctions ${formatLkr(stats.auctionIncome.today)} · ${stats.ordersToday ?? 0} order${(stats.ordersToday ?? 0) === 1 ? '' : 's'}, ${stats.auctionIncome.wonToday} win${stats.auctionIncome.wonToday === 1 ? '' : 's'}`
+                  : `${stats.ordersToday ?? 0} order${(stats.ordersToday ?? 0) === 1 ? '' : 's'} today`
+              }
+              loading={refreshing}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <StatTile
+              title="Income this month"
+              value={formatLkr(stats.incomeThisMonthLkr ?? 0)}
+              icon={<CalendarMonth />}
+              color="#26d4b4"
+              subtitle={
+                stats.shopIncome && stats.auctionIncome
+                  ? `Shop ${formatLkr(stats.shopIncome.thisMonth)} · Auctions ${formatLkr(stats.auctionIncome.thisMonth)} · ${stats.ordersThisMonth ?? 0} order${(stats.ordersThisMonth ?? 0) === 1 ? '' : 's'}, ${stats.auctionIncome.wonThisMonth} win${stats.auctionIncome.wonThisMonth === 1 ? '' : 's'}`
+                  : `${stats.ordersThisMonth ?? 0} order${(stats.ordersThisMonth ?? 0) === 1 ? '' : 's'} this month`
+              }
+              loading={refreshing}
+            />
+          </Grid>
         </Grid>
+      </Box>
+
+      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: isDark ? '#F5D300' : '#E6C200' }}>
+        Catalog & inventory
+      </Typography>
+
+      <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatTile
             title="Live listings"
@@ -259,15 +369,6 @@ const MerchantDashboardPage: React.FC = () => {
             value={stats.inventoryUnits}
             icon={<Inventory2 />}
             color="#8b5cf6"
-            loading={refreshing}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatTile
-            title="Total income (LKR)"
-            value={stats.totalIncomeLkr.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            icon={<Payments />}
-            color="#f59e0b"
             loading={refreshing}
           />
         </Grid>

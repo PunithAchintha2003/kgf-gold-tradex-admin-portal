@@ -1,13 +1,42 @@
 import api, { API_BASE_URL } from './api';
 
+export interface MerchantIncomeBreakdown {
+  total: number;
+  today: number;
+  thisMonth: number;
+}
+
+export interface MerchantShopIncome extends MerchantIncomeBreakdown {
+  orderCount: number;
+  ordersToday: number;
+  ordersThisMonth: number;
+  lastAt: string | null;
+}
+
+export interface MerchantAuctionIncome extends MerchantIncomeBreakdown {
+  wonCount: number;
+  wonToday: number;
+  wonThisMonth: number;
+  lastAt: string | null;
+}
+
 export interface MerchantDashboardStats {
   merchantVerified: boolean;
   totalProducts: number;
   publishedProducts: number;
   draftProducts: number;
   inventoryUnits: number;
+  /** Combined shop + auction income */
   totalIncomeLkr: number;
+  incomeTodayLkr: number;
+  incomeThisMonthLkr: number;
   totalOrderCount: number;
+  ordersToday: number;
+  ordersThisMonth: number;
+  lastOrderAt: string | null;
+  shopIncome?: MerchantShopIncome;
+  auctionIncome?: MerchantAuctionIncome;
+  lastActivityAt?: string | null;
 }
 
 export interface MerchantProduct {

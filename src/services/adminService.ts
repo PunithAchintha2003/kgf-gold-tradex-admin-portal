@@ -92,9 +92,5 @@ export const adminService = {
     const response = await api.put<UserResponse>(`/admin/users/${id}`, data);
     return response.data.data.user;
   },
-
-  deleteUser: async (id: string): Promise<void> => {
-    await api.delete(`/admin/users/${id}`);
-  },
 };
 

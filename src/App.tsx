@@ -12,6 +12,8 @@ import MerchantProductsPage from './pages/merchant/MerchantProductsPage';
 import MerchantOrdersPage from './pages/merchant/MerchantOrdersPage';
 import MerchantAuctionsPage from './pages/merchant/MerchantAuctionsPage';
 import MerchantAuctionManagementPage from './pages/merchant/MerchantAuctionManagementPage';
+import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
 import { authService } from './services/authService';
 
@@ -111,6 +113,26 @@ const App: React.FC = () => {
         }
       />
       <Route
+        path="/profile"
+        element={
+          <AdminProtectedRoute>
+            <Layout variant="admin">
+              <ProfilePage portalRole="admin" />
+            </Layout>
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <AdminProtectedRoute>
+            <Layout variant="admin">
+              <SettingsPage portalRole="admin" />
+            </Layout>
+          </AdminProtectedRoute>
+        }
+      />
+      <Route
         path="/merchant"
         element={
           <MerchantProtectedRoute>
@@ -156,6 +178,26 @@ const App: React.FC = () => {
           <MerchantProtectedRoute>
             <Layout variant="merchant">
               <MerchantAuctionManagementPage />
+            </Layout>
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/merchant/profile"
+        element={
+          <MerchantProtectedRoute>
+            <Layout variant="merchant">
+              <ProfilePage portalRole="merchant" />
+            </Layout>
+          </MerchantProtectedRoute>
+        }
+      />
+      <Route
+        path="/merchant/settings"
+        element={
+          <MerchantProtectedRoute>
+            <Layout variant="merchant">
+              <SettingsPage portalRole="merchant" />
             </Layout>
           </MerchantProtectedRoute>
         }

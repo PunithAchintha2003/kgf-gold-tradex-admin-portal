@@ -17,10 +17,13 @@ import {
   Avatar,
   InputAdornment,
 } from '@mui/material';
-import { Refresh, Search, Download } from '@mui/icons-material';
+import { Refresh, Search, Download, Visibility, VisibilityOff } from '@mui/icons-material';
+import { authService } from '../services/authService';
+import { useToast } from '../contexts/ToastContext';
 import { useTheme as useMUITheme } from '@mui/material/styles';
 import { spotTradeAdminService, SpotTrade, WalletTransaction } from '../services/spotTradeAdminService';
 import { GlassCard, GlassInput, GlassButton, GlassTable } from '../components/Glass';
+import { buildCsv, csvExportTimestamp, downloadCsv } from '../utils/csvExport';
 
 const TransactionsPage: React.FC = () => {
   const muiTheme = useMUITheme();
@@ -31,6 +34,10 @@ const TransactionsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
   const [spotTrades, setSpotTrades] = useState<SpotTrade[]>([]);
+  const [markingSeenId, setMarkingSeenId] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const { showSuccess, showError } = useToast();
+  const isSuperAdmin = authService.isSuperAdmin();
 
   const fetchData = async () => {
     setLoading(true);
@@ -60,6 +67,129 @@ const TransactionsPage: React.FC = () => {
   const filteredSpotTrades = spotTrades.filter((trade) =>
     trade.id.toString().includes(search) || trade.user_id.toString().includes(search)
   );
+
+  const toIso = (value?: string) => (value ? new Date(value).toISOString() : '');
+
+  const handleExport = () => {
+    const isWalletTab = tab === 0;
+    const rows = isWalletTab ? filteredWalletTransactions : filteredSpotTrades;
+
+    if (rows.length === 0) {
+      showError('Nothing to export', {
+        description: search
+          ? 'No rows match your search. Clear the filter or refresh data.'
+          : 'There are no transactions in this tab yet.',
+      });
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const stamp = csvExportTimestamp();
+      let csv: string;
+      let filename: string;
+
+      if (isWalletTab) {
+        const headers = [
+          'ID',
+          'User ID',
+          'Type',
+          'Amount (LKR)',
+          'Fee (LKR)',
+          'Status',
+          'Payment Method',
+          'Bank Name',
+          'Bank Account Number',
+          'Bank Account Name',
+          'Notes',
+          'Approved By',
+          'Approved At',
+          'Created At',
+          'Updated At',
+        ];
+        const data = (rows as WalletTransaction[]).map((tx) => [
+          tx.id,
+          tx.user_id,
+          tx.transaction_type,
+          tx.amount,
+          tx.fee ?? 0,
+          tx.status,
+          tx.payment_method ?? '',
+          tx.bank_name ?? '',
+          tx.bank_account_number ?? '',
+          tx.bank_account_name ?? '',
+          tx.notes ?? '',
+          tx.approved_by ?? '',
+          toIso(tx.approved_at),
+          toIso(tx.created_at),
+          toIso(tx.updated_at),
+        ]);
+        csv = buildCsv(headers, data);
+        filename = `kgf-wallet-transactions_${stamp}.csv`;
+      } else {
+        const headers = [
+          'ID',
+          'User ID',
+          'Order Type',
+          'Quantity (pawn)',
+          'Price (LKR)',
+          'Total Value (LKR)',
+          'Fee (LKR)',
+          'Status',
+          ...(isSuperAdmin ? ['Admin Seen', 'Admin Seen At', 'Admin Seen By'] : []),
+          'Created At',
+          'Updated At',
+        ];
+        const data = (rows as SpotTrade[]).map((trade) => [
+          trade.id,
+          trade.user_id,
+          trade.order_type,
+          trade.quantity,
+          trade.price,
+          trade.total_value,
+          trade.fee ?? 0,
+          trade.status,
+          ...(isSuperAdmin
+            ? [trade.admin_seen ? 'Yes' : 'No', toIso(trade.admin_seen_at ?? undefined), trade.admin_seen_by ?? '']
+            : []),
+          toIso(trade.created_at),
+          toIso(trade.updated_at),
+        ]);
+        csv = buildCsv(headers, data);
+        filename = `kgf-gold-trades_${stamp}.csv`;
+      }
+
+      downloadCsv(filename, csv);
+      showSuccess('Export downloaded', {
+        description: `${rows.length} row${rows.length === 1 ? '' : 's'} exported as ${filename}`,
+      });
+    } catch {
+      showError('Export failed', { description: 'Could not generate the CSV file. Please try again.' });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleMarkTradeSeen = async (tradeId: number) => {
+    setMarkingSeenId(tradeId);
+    try {
+      const updated = await spotTradeAdminService.markSpotTradeSeen(tradeId);
+      setSpotTrades((prev) =>
+        prev.map((trade) => (trade.id === tradeId ? { ...trade, ...updated } : trade))
+      );
+      showSuccess('Marked as seen');
+    } catch (e: unknown) {
+      const message =
+        e && typeof e === 'object' && 'response' in e
+          ? (e as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined;
+      showError('Could not update seen status', {
+        description: message || 'Please try again.',
+      });
+    } finally {
+      setMarkingSeenId(null);
+    }
+  };
 
   return (
     <Box>
@@ -116,18 +246,51 @@ const TransactionsPage: React.FC = () => {
                 <Refresh />
               </IconButton>
             </Tooltip>
-            <GlassButton
-              variant="contained"
-              startIcon={<Download />}
-              sx={{
-                background: isDark
-                  ? 'linear-gradient(135deg, #F5D300 0%, #B8A000 100%)'
-                  : 'linear-gradient(135deg, #E6C200 0%, #B8A000 100%)',
-                color: isDark ? '#000' : '#FFF',
-              }}
+            <Tooltip
+              title={
+                tab === 0
+                  ? 'Download deposits & withdrawals as CSV (respects search filter)'
+                  : 'Download gold buy/sell trades as CSV (respects search filter)'
+              }
             >
-              Export
-            </GlassButton>
+              <span>
+                <GlassButton
+                  variant="contained"
+                  startIcon={exporting ? <CircularProgress size={18} color="inherit" /> : <Download />}
+                  disabled={loading || exporting}
+                  onClick={handleExport}
+                  sx={{
+                    background: isDark
+                      ? 'linear-gradient(135deg, #F5D300 0%, #B8A000 100%)'
+                      : 'linear-gradient(135deg, #E6C200 0%, #B8A000 100%)',
+                    color: isDark ? '#000' : '#FFF',
+                    border: isDark
+                      ? '1px solid rgba(245, 211, 0, 0.5)'
+                      : '1px solid rgba(230, 194, 0, 0.5)',
+                    '&:hover': {
+                      background: isDark
+                        ? 'linear-gradient(135deg, #FFE55C 0%, #F5D300 100%)'
+                        : 'linear-gradient(135deg, #FFE55C 0%, #E6C200 100%)',
+                      color: '#000',
+                      borderColor: isDark ? 'rgba(245, 211, 0, 0.75)' : 'rgba(230, 194, 0, 0.75)',
+                      boxShadow: isDark
+                        ? '0 4px 16px rgba(245, 211, 0, 0.35)'
+                        : '0 4px 16px rgba(230, 194, 0, 0.35)',
+                      transform: 'translateY(-1px)',
+                    },
+                    '&:active': {
+                      background: isDark
+                        ? 'linear-gradient(135deg, #E6C200 0%, #B8A000 100%)'
+                        : 'linear-gradient(135deg, #E6C200 0%, #B8A000 100%)',
+                      transform: 'translateY(0)',
+                      boxShadow: 'none',
+                    },
+                  }}
+                >
+                  Export
+                </GlassButton>
+              </span>
+            </Tooltip>
           </Box>
         </Box>
       </GlassCard>
@@ -335,12 +498,17 @@ const TransactionsPage: React.FC = () => {
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Total</TableCell>
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Fee</TableCell>
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Created</TableCell>
+                  {isSuperAdmin && (
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }} align="center">
+                      Seen
+                    </TableCell>
+                  )}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredSpotTrades.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                    <TableCell colSpan={isSuperAdmin ? 9 : 8} align="center" sx={{ py: 6 }}>
                       <Typography sx={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: '0.875rem' }}>
                         No trades found
                       </Typography>
@@ -351,6 +519,12 @@ const TransactionsPage: React.FC = () => {
                     <TableRow
                       key={trade.id}
                       sx={{
+                        ...(isSuperAdmin &&
+                          !trade.admin_seen && {
+                            background: isDark
+                              ? 'rgba(245, 211, 0, 0.06)'
+                              : 'rgba(230, 194, 0, 0.08)',
+                          }),
                         '&:hover': {
                           background: isDark
                             ? 'rgba(245, 211, 0, 0.05)'
@@ -435,6 +609,49 @@ const TransactionsPage: React.FC = () => {
                           })}
                         </Typography>
                       </TableCell>
+                      {isSuperAdmin && (
+                        <TableCell align="center">
+                          {trade.admin_seen ? (
+                            <Tooltip title="Reviewed by super admin">
+                              <Chip
+                                size="small"
+                                icon={<Visibility sx={{ fontSize: 16 }} />}
+                                label="Seen"
+                                sx={{
+                                  fontWeight: 600,
+                                  fontSize: '0.75rem',
+                                  background: isDark
+                                    ? 'rgba(16, 185, 129, 0.2)'
+                                    : 'rgba(16, 185, 129, 0.12)',
+                                  color: isDark ? '#34d399' : '#059669',
+                                  border: `1px solid ${isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.3)'}`,
+                                }}
+                              />
+                            </Tooltip>
+                          ) : (
+                            <Tooltip title="Mark this trade as seen">
+                              <span>
+                                <GlassButton
+                                  size="small"
+                                  variant="outlined"
+                                  disabled={markingSeenId === trade.id}
+                                  onClick={() => void handleMarkTradeSeen(trade.id)}
+                                  startIcon={
+                                    markingSeenId === trade.id ? (
+                                      <CircularProgress size={14} color="inherit" />
+                                    ) : (
+                                      <VisibilityOff sx={{ fontSize: 18 }} />
+                                    )
+                                  }
+                                  sx={{ minWidth: 100, fontSize: '0.75rem' }}
+                                >
+                                  Mark seen
+                                </GlassButton>
+                              </span>
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}
