@@ -22,6 +22,7 @@ import { adminService, User } from '../services/adminService';
 import { GlassCard, GlassInput, GlassTable, GlassButton } from '../components/Glass';
 import { UserEditDialog } from '../components/UserEditDialog';
 import { CreateUserDialog } from '../components/CreateUserDialog';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export type UserDirectoryMode = 'all' | 'merchants';
 
@@ -59,8 +60,8 @@ export const UserDirectoryPage: React.FC<UserDirectoryPageProps> = ({ mode }) =>
       }));
       setUsers(normalizedUsers);
       setTotal(data.pagination.total);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to fetch users');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to fetch users'));
     } finally {
       setLoading(false);
     }

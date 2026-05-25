@@ -22,6 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { merchantService, MerchantDashboardStats } from '../../services/merchantService';
 import { DownloadBackupButton } from '../../components/admin/DownloadBackupButton';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 const hexToRgb = (hex: string): string => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -139,8 +140,8 @@ const MerchantDashboardPage: React.FC = () => {
       const data = await merchantService.getDashboardStats();
       setStats(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Could not load merchant dashboard');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Could not load merchant dashboard'));
     } finally {
       setLoading(false);
       setRefreshing(false);

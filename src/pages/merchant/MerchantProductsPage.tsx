@@ -37,6 +37,7 @@ import {
   normalizeProductCategory,
   type ProductCategory,
 } from '../../constants/productCategories';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 const emptyForm = {
   title: '',
@@ -85,8 +86,8 @@ const MerchantProductsPage: React.FC = () => {
       const data = await merchantService.getProducts(page + 1, rowsPerPage, search);
       setProducts(data.products);
       setTotal(data.pagination.total);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to load products');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to load products'));
     } finally {
       setLoading(false);
     }
@@ -174,8 +175,8 @@ const MerchantProductsPage: React.FC = () => {
       setEditing(null);
       setForm(emptyForm);
       await fetchProducts();
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || err.message || 'Save failed');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Save failed'));
     } finally {
       setSaving(false);
     }
@@ -190,8 +191,8 @@ const MerchantProductsPage: React.FC = () => {
       setDeleteOpen(false);
       setDeleting(null);
       await fetchProducts();
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Delete failed');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Delete failed'));
     } finally {
       setSaving(false);
     }

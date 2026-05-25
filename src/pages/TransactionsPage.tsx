@@ -24,6 +24,7 @@ import { useTheme as useMUITheme } from '@mui/material/styles';
 import { spotTradeAdminService, SpotTrade, WalletTransaction } from '../services/spotTradeAdminService';
 import { GlassCard, GlassInput, GlassButton, GlassTable } from '../components/Glass';
 import { buildCsv, csvExportTimestamp, downloadCsv } from '../utils/csvExport';
+import { getApiErrorMessage } from '../utils/apiError';
 
 const TransactionsPage: React.FC = () => {
   const muiTheme = useMUITheme();
@@ -49,8 +50,8 @@ const TransactionsPage: React.FC = () => {
       ]);
       setWalletTransactions(walletRes.transactions);
       setSpotTrades(tradeRes.trades);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Failed to load transactions');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e, 'Failed to load transactions'));
     } finally {
       setLoading(false);
     }
