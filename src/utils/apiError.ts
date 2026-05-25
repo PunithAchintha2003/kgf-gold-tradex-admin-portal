@@ -12,6 +12,19 @@ export class ApiRequestError extends Error {
   }
 }
 
+export function getApiErrorMessage(error: unknown, fallback = 'Request failed'): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as
+      | { error?: string; message?: string; detail?: string }
+      | undefined;
+    return data?.error || data?.message || data?.detail || error.message || fallback;
+  }
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+  return fallback;
+}
+
 export function throwApiError(error: unknown): never {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as { error?: string; message?: string; code?: string } | undefined;
